@@ -10,7 +10,7 @@ This document records the intentional deviations from the original `Implementati
 ## 2. Graph Database Compilation (Phase 8 & 12)
 *   **Original Plan:** The `ai-brains-graph` crate, wrapping LadybugDB (which uses Kuzu, a C++ graph database), is a mandatory dependency for all retrieval and intelligence operations.
 *   **Deviation:** Isolated the graph database behind a Cargo feature flag (`graph`) in `ai-brains-cli` and `ai-brains-retrieval`. E2E smoke tests and the CLI now compile and run cleanly without the graph database using a dynamically typed mock (`MockGraphSearch`).
-*   **Rationale:** Similar to SQLCipher, the CMake/C++ toolchain requirements for Kuzu proved unstable on the Windows host environment, causing build panics during E2E testing. Decoupling the graph allows the core system (capture, store, summarization, retrieval) to remain highly portable and testable.
+*   **Rationale:** While CMake and MSVC are installed on the Windows host, the Kuzu C++ dependency triggers a known MSVC limitation during debug builds (`fatal error LNK1248: image size exceeds maximum allowable size (FFFFFFFF)`). This 4GB size limit for static libraries in MSVC Debug mode prevents compilation. Decoupling the graph allows the core system (capture, store, summarization, retrieval) to remain highly portable and testable on Windows without complex MSVC workarounds.
 
 ## 3. Date & Time Management
 *   **Original Plan:** Not strictly specified, but generally leaned towards the `time` crate for lightweight timestamps.
