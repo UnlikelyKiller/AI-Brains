@@ -11,25 +11,25 @@ Phase 10: Memory Intelligence. We need to detect when new sessions contradict pa
 ## Implementation Plan
 
 ### Phase 1: Event Definitions
-- [ ] Define `ConflictDetectedPayload` in `ai-brains-events`.
-- [ ] Define `RecipePromotedPayload` in `ai-brains-events`.
-- [ ] Add both to `EventKind`.
+- [x] Define `ConflictDetectedPayload` in `ai-brains-events`.
+- [x] Define `RecipePromotedPayload` in `ai-brains-events`.
+- [x] Add both to `EventKind`.
 
 ### Phase 2: Intelligence Services
-- [ ] Implement `ConflictDetectionService` in `ai-brains-brain`.
-- [ ] Implement `RecipePromotionService` in `ai-brains-brain`.
-- [ ] Use `ModelProvider` to analyze recent summaries against related memories (retrieved via Graph/FTS).
+- [x] Implement `ConflictDetectionService` in `ai-brains-brain`.
+- [x] Implement `RecipePromotionService` in `ai-brains-brain`.
+- [x] Use `ModelProvider` to analyze recent summaries against related memories (retrieved via Graph/FTS).
 
 ### Phase 3: Projections
-- [ ] Update SQL migrations to include `conflict_projection` and `recipe_projection` (0007).
-- [ ] Update `GraphProjector` to handle these events.
+- [x] Update SQL migrations to include `conflict_projection` and `recipe_projection` (0007).
+- [x] Update `GraphProjector` to handle these events.
 
 ### Phase 4: Verification
-- [ ] Test: `conflict_detected_from_contradictory_sessions`
-- [ ] Test: `recipe_promoted_from_windows_workaround`
+- [x] Test: `conflict_detected_from_contradictory_sessions`
+- [x] Test: `recipe_promoted_from_windows_workaround`
 
 ## Progress
-- [ ] Phase 1
-- [ ] Phase 2
-- [ ] Phase 3
-- [ ] Phase 4
+- [x] Phase 1
+- [x] Phase 2
+- [x] Phase 3
+- [x] Phase 4
