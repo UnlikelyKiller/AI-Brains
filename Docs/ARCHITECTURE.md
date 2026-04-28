@@ -27,7 +27,14 @@ Aggregates data from multiple projections to serve high-level queries like `pref
 - **Lexical Search**: Primary search mechanism via SQLite FTS5.
 - **Vector/Graph Search**: (Optional) augmentation for semantic or relational discovery.
 
-### 2.5 Brain (`ai-brains-brain`)
+### 2.5 Models & Intelligence
+- **Models**: Integration with local `llama.cpp` router via `LlamaCppProvider`.
+- **Hardware Optimization**: Optimized for Intel Arc B580 (12GB VRAM) with dynamic model switching between BGE-M3 (embeddings) and Qwen 3.5 (completion).
+- **Indexing Strategy**: Dual-path indexing.
+  - **Synchronous**: Every conversation turn is immediately indexed into `memory_projection` and FTS for lexical recall.
+  - **Asynchronous**: Nightly jobs perform summarization, conflict detection, and hierarchical memory synthesis.
+
+### 2.6 Brain (`ai-brains-brain`)
 The "Nightly" intelligence worker that operates on background tasks:
 - **Summarization**: Compresses session turns into session summaries.
 - **RAPTOR**: Hierarchical clustering of memories for long-term knowledge retention.

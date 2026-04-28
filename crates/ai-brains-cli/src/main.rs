@@ -64,9 +64,16 @@ enum Commands {
         /// Memory ID to forget
         memory_id: String,
     },
+    /// Stop an active session
+    StopSession {
+        /// Session ID to stop
+        session_id: String,
+    },
 }
 
 fn main() {
+    dotenvy::dotenv().ok();
+    tracing_subscriber::fmt::init();
     let cli = Cli::parse();
     if let Err(err) = run(cli) {
         eprintln!("Error: {err}");
@@ -83,6 +90,7 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Commands::Nightly { schedule, start_time } => run_nightly(&cli, *schedule, start_time.clone()),
         Commands::Backup => run_backup(&cli),
         Commands::Forget { memory_id } => run_forget(&cli, memory_id.clone()),
+        Commands::StopSession { session_id } => run_stop_session(&cli, session_id.clone()),
     }
 }
 
@@ -127,19 +135,7 @@ fn run_ingest(cli: &Cli) -> Result<(), Box<dyn std::error::Error>> {
     let conn = open_vault(cli)?;
     let event_store = ai_brains_store::SqliteEventStore::new(conn.clone());
 
-    struct StoreSink {
-        store: ai_brains_store::SqliteEventStore,
-        last_error: Option<String>,
-    }
-    impl CaptureSink for StoreSink {
-        fn append(&mut self, envelope: ai_brains_events::Envelope) {
-            if let Err(err) = self.store.append_event(&envelope) {
-                self.last_error = Some(err.to_string());
-            }
-        }
-    }
-
-    let mut sink = StoreSink {
+    let mut sink = struct_sink::StoreSink {
         store: event_store,
         last_error: None,
     };
@@ -299,10 +295,20 @@ fn run_nightly(cli: &Cli, schedule: bool, start_time: String) -> Result<(), Box<
     let event_store = std::sync::Arc::new(ai_brains_store::SqliteEventStore::new(conn.clone()));
     let query_store = std::sync::Arc::new(conn);
     
-    // For now, use Ollama as default provider
-    let model_provider = std::sync::Arc::new(ai_brains_models::ollama::OllamaProvider::new("http://localhost:11434".to_string(), "qwen2.5:3b".to_string()));
+    let model_url = std::env::var("AI_BRAINS_MODEL_URL").unwrap_or_else(|_| "http://127.0.0.1:8081".to_string());
+    let completion_model = std::env::var("AI_BRAINS_COMPLETION_MODEL").unwrap_or_else(|_| "qwen3.5-9b".to_string());
+    let embedding_model = std::env::var("AI_BRAINS_EMBEDDING_MODEL").unwrap_or_else(|_| "bge-m3".to_string());
+
+    let completion_provider = std::sync::Arc::new(ai_brains_models::llama_cpp::LlamaCppProvider::new(
+        model_url.clone(), 
+        completion_model
+    ));
+    let embedding_provider = std::sync::Arc::new(ai_brains_models::llama_cpp::LlamaCppProvider::new(
+        model_url, 
+        embedding_model
+    ));
     
-    let service = ai_brains_brain::NightlyService::new(query_store, event_store, model_provider);
+    let service = ai_brains_brain::NightlyService::new(query_store, event_store, completion_provider, embedding_provider);
     
     println!("Starting nightly intelligence sweep...");
     let tokio_runtime = tokio::runtime::Runtime::new()?;
@@ -354,4 +360,57 @@ fn run_forget(cli: &Cli, memory_id_str: String) -> Result<(), Box<dyn std::error
     
     println!("Memory {} marked as forgotten.", memory_id);
     Ok(())
+}
+
+fn run_stop_session(cli: &Cli, session_id_str: String) -> Result<(), Box<dyn std::error::Error>> {
+    let session_id = SessionId::from_str(&session_id_str)?;
+    let conn = open_vault(cli)?;
+    let event_store = ai_brains_store::SqliteEventStore::new(conn.clone());
+
+    let mut sink = struct_sink::StoreSink {
+        store: event_store,
+        last_error: None,
+    };
+
+    let service = CaptureService::new();
+    let capture_context = CaptureContext {
+        git_working_dir: std::env::current_dir().ok(),
+    };
+
+    service.stop_session(
+        ai_brains_capture::SessionStopCommand {
+            session_id,
+            harness_id: HarnessId::new(), // In a real scenario, this should come from context
+            privacy: ai_brains_core::privacy::Privacy::LocalOnly,
+            status: ai_brains_capture::SessionStopStatus::Completed,
+            reason: None,
+        },
+        capture_context,
+        &mut sink,
+    )?;
+
+    if let Some(err) = sink.last_error {
+        return Err(format!("Failed to stop session: {}", err).into());
+    }
+
+    println!("Session {} marked as completed.", session_id);
+    Ok(())
+}
+
+mod struct_sink {
+    use ai_brains_capture::CaptureSink;
+    use ai_brains_store::{SqliteEventStore, EventStore};
+    use ai_brains_events::Envelope;
+
+    pub struct StoreSink {
+        pub store: SqliteEventStore,
+        pub last_error: Option<String>,
+    }
+    impl CaptureSink for StoreSink {
+        fn append(&mut self, envelope: Envelope) {
+            if let Err(err) = self.store.append_event(&envelope) {
+                self.last_error = Some(err.to_string());
+            }
+        }
+    }
 }

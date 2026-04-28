@@ -47,3 +47,4 @@ tempfile = "3.10"
 assert_cmd = "2.0"
 predicates = "3.1"
 rusqlite = { version = "0.32.1", features = ["bundled"] }
+dotenvy = "0.15"

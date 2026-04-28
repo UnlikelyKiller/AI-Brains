@@ -53,4 +53,5 @@ pub trait ModelProvider: Send + Sync {
 pub use mock::MockProvider;
 pub mod mock;
 pub mod ollama;
+pub mod llama_cpp;
 pub mod registry;

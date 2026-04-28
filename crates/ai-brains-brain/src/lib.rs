@@ -20,19 +20,22 @@ pub use retention::RetentionService;
 pub struct NightlyService {
     query_store: Arc<dyn QueryStore>,
     event_store: Arc<dyn EventStore>,
-    model_provider: Arc<dyn ModelProvider>,
+    completion_provider: Arc<dyn ModelProvider>,
+    embedding_provider: Arc<dyn ModelProvider>,
 }
 
 impl NightlyService {
     pub fn new(
         query_store: Arc<dyn QueryStore>,
         event_store: Arc<dyn EventStore>,
-        model_provider: Arc<dyn ModelProvider>,
+        completion_provider: Arc<dyn ModelProvider>,
+        embedding_provider: Arc<dyn ModelProvider>,
     ) -> Self {
         Self {
             query_store,
             event_store,
-            model_provider,
+            completion_provider,
+            embedding_provider,
         }
     }
 
@@ -52,7 +55,7 @@ impl NightlyService {
         let synthesizer = MemorySynthesizer::new(
             self.query_store.clone(),
             self.event_store.clone(),
-            self.model_provider.clone(),
+            self.completion_provider.clone(),
         );
         if let Err(e) = synthesizer.run_synthesis().await {
             tracing::error!("Memory synthesis failed: {}", e);
@@ -92,7 +95,7 @@ impl NightlyService {
             temperature: Some(0.3),
         };
 
-        let response = self.model_provider.complete(request).await?;
+        let response = self.completion_provider.complete(request).await?;
         let memory_id = MemoryId::new();
         let session_id = SessionId::from_str(session_id_str)?;
 
@@ -115,12 +118,12 @@ impl NightlyService {
         let conflict_service = ConflictDetectionService::new(
             self.query_store.clone(),
             self.event_store.clone(),
-            self.model_provider.clone(),
+            self.completion_provider.clone(),
         );
         let recipe_service = RecipePromotionService::new(
             self.query_store.clone(),
             self.event_store.clone(),
-            self.model_provider.clone(),
+            self.completion_provider.clone(),
         );
 
         let summary_text = response.text;

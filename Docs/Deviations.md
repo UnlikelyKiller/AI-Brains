@@ -26,3 +26,8 @@ This document records the intentional deviations from the original `Implementati
 *   **Original Plan:** Rely heavily on multi-hop graph traversal (LadybugDB) for memory synthesis and long-term intelligence.
 *   **Deviation:** Implemented RAPTOR-style hierarchical clustering and CRAG factual verification directly over the FTS/Lexical search read-models.
 *   **Rationale:** To protect the background Nightly worker from the instability of the C++ graph build on Windows, the synthesis engine was decoupled from the graph. It currently relies on the standard `QueryStore` interface, ensuring high-level knowledge extraction works purely on the SQLite event projections.
+
+## 6. Local Model Provider Integration (Phase 10 & 14)
+*   **Original Plan:** Use `OllamaProvider` as the primary local intelligence engine.
+*   **Deviation:** Implemented a custom `LlamaCppProvider` and transitioned to a multi-stage RAG strategy using environment-based model selection.
+*   **Rationale:** The user's environment uses a high-performance Intel Arc B580 with a custom `llama-server` router. The standard Ollama API was insufficient for the required multi-model swapping (BGE-M3 for embeddings, Qwen 3.5 for completion) within strict 12GB VRAM limits. The dynamic configuration via `.env` allows for rapid model swaps without code changes.
