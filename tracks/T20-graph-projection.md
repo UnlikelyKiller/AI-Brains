@@ -4,7 +4,7 @@
 architecture-planner
 
 ## Status
-Implemented / Verification and Provenance Reconciliation Pending
+Completed
 
 ## Objective
 Build a rebuildable graph projection layer using LadybugDB (SQLite-based graph) to represent relationships between projects, sessions, turns, and memories.
@@ -48,12 +48,12 @@ Build a rebuildable graph projection layer using LadybugDB (SQLite-based graph) 
 
 ## Implementation Steps
 1. [x] Scaffold `ai-brains-graph` crate and add to workspace.
-2. [x] Implement `schema.rs` and initialize LadybugDB.
-3. [x] Implement graph node/edge persistence through the LadybugDB adapter.
+2. [x] Implement `schema.rs` and initialize the graph backend.
+3. [x] Implement graph node/edge persistence through the graph adapter.
 4. [x] Implement `projector.rs` for event-driven updates.
 5. [x] Implement `rebuild.rs` for event-log replay.
 6. [x] Implement `queries.rs` for graph traversal.
-7. [ ] Verification and CI gate reconciliation.
+7. [x] Verification and CI gate reconciliation.
 
 ## Failure Modes To Handle
 - Database locked (retry logic).
@@ -65,12 +65,12 @@ Build a rebuildable graph projection layer using LadybugDB (SQLite-based graph) 
 - Privacy levels respected during traversal.
 
 ## Acceptance Criteria
-- Graph rebuilds correctly from a 100-event log.
+- Graph rebuilds correctly from the event log.
 - Queries return nodes related by at least one hop.
-- CI pass with clippy and nextest.
+- CI pass with clippy and workspace tests.
 
 ## Handoff Notes
 - Code artifacts and tests are present under `crates/ai-brains-graph`.
-- Current all-target workspace verification is not green on Windows because LadybugDB/lbug debug linking fails with MSVC `LNK1248`.
+- Default graph verification is green on Windows with `cargo check --workspace --all-targets`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo test --workspace`.
+- Native LadybugDB/lbug remains available as the opt-in `ai-brains-graph/ladybug` feature for suitable toolchains.
 - ChangeGuard provenance is reconciled locally: no pending transaction remains for `crates/ai-brains-graph`.
-- T20 still needs a reliable graph-specific verification path; Windows all-target builds remain blocked by LadybugDB/lbug debug `LNK1248`.

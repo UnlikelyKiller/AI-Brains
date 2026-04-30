@@ -23,7 +23,7 @@ Claude Code and Gemini CLI have different hook input/output formats. A shared sc
 | Project directory | `$env:GEMINI_PROJECT_DIR` | `cwd` field in stdin JSON, or `$env:CLAUDE_PROJECT_DIR` |
 | Ingest source | `payload.final_response` or `payload.prompt_response` | Transcript JSONL file at `transcript_path` |
 
-Because these differences are structural, each CLI has its own entry-point script under `~/.ai-brains/scripts/`.
+Because these differences are structural, each CLI has its own entry-point script under `~/.ai-brains/scripts/`. The repo source of truth for Claude Code is `AI-Brains\scripts\target-claude-hook.ps1`; reinstall that file to the user-level path after editing it.
 
 ## Event Mapping
 
@@ -119,7 +119,7 @@ All events invoke the same script. The script reads `hook_event_name` from stdin
 
 ## Hook Script Architecture
 
-The core logic resides in `C:\Users\RyanB\.ai-brains\scripts\target-claude-hook.ps1`.
+The repo source of truth is `AI-Brains\scripts\target-claude-hook.ps1`. The installed user-level copy resides in `C:\Users\RyanB\.ai-brains\scripts\target-claude-hook.ps1`.
 
 ### Stdin Handling
 

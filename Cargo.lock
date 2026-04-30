@@ -205,6 +205,7 @@ name = "ai-brains-graph"
 version = "0.1.0"
 dependencies = [
  "ai-brains-core",
+ "ai-brains-crypto",
  "ai-brains-events",
  "ai-brains-store",
  "chrono",

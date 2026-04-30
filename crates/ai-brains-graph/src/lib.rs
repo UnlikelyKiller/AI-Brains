@@ -8,3 +8,4 @@ pub mod schema;
 pub use errors::{GraphError, Result};
 pub use ladybug::LadybugVault;
 pub use projector::GraphProjector;
+pub use rebuild::GraphRebuilder;

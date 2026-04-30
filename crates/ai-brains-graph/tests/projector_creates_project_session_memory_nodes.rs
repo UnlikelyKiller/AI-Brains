@@ -1,12 +1,13 @@
 mod common;
 
 use ai_brains_graph::{GraphProjector, LadybugVault};
+use ai_brains_store::EventStore;
 use tempfile::tempdir;
 
 #[test]
 fn test_projector_creates_nodes_and_edges() -> Result<(), Box<dyn std::error::Error>> {
-    let mut store = common::setup_store()?;
-    let (session_id, project_id) = common::append_session(&mut store)?;
+    let store = common::setup_store()?;
+    let (session_id, project_id) = common::append_session(&store)?;
 
     let temp_dir = tempdir()?;
     let vault_path = temp_dir.path().join("graph.db");

@@ -1,7 +1,6 @@
 use crate::errors::{GraphError, Result};
-use crate::ladybug::LadybugVault;
+use crate::ladybug::{LadybugVault, Value};
 use ai_brains_events::{Envelope, Payload};
-use lbug::Value;
 use std::collections::HashMap;
 
 pub struct GraphProjector<'a> {

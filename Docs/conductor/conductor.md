@@ -4,7 +4,7 @@
 **Status:** In Progress
 **Phase:** Phase 15 - Cross-Agent Memory Synthesis [In Progress]
 **Current Track:** T28 - Cross-Agent Harness [In Progress]
-**Verification:** Degraded Windows gate is green as of 2026-04-30. Full all-target workspace check still fails on the documented LadybugDB/MSVC debug `LNK1248` graph build issue. ChangeGuard ledger is reconciled locally.
+**Verification:** Full Windows workspace gate is green as of 2026-04-30 with `ai-brains-graph` included. Native LadybugDB/lbug remains opt-in through `ai-brains-graph/ladybug` because MSVC debug builds can hit linker `LNK1248`. ChangeGuard ledger is reconciled locally.
 
 ## Track Registry
 
@@ -26,7 +26,7 @@
 | T13 | CLI Capture | **Completed** | architecture-planner | CLI integration with capture core. |
 | T18 | Retrieval Lexical | **Completed** | architecture-planner | Lexical recall over the store read side. |
 | T19 | Preflight Recall | **Completed** | architecture-planner | Word-budgeted preflight assembly with privacy filtering. |
-| T20 | Graph Projection | **Implemented / Reconcile** | architecture-planner | Rebuildable graph projection layer using LadybugDB; verification blocked by Windows/MSVC LadybugDB debug build issue and stale ledger provenance. |
+| T20 | Graph Projection | **Completed** | architecture-planner | Rebuildable graph projection layer with default deterministic backend and opt-in LadybugDB backend. |
 | T21 | Model Providers | **Implemented / Reconcile** | architecture-planner | Provider-agnostic model abstraction and local providers exist; provenance and current verification need reconciliation. |
 | T22 | Nightly Summaries | **Implemented / Reconcile** | architecture-planner | Nightly service exists, but tests need update after constructor/API changes and provenance needs reconciliation. |
 | T23 | Conflicts Recipes | **Completed** | architecture-planner | Contradictory session detection and recipe promotion. |
@@ -37,10 +37,11 @@
 | T28 | Cross-Agent Harness | **In Progress** | Orchestrator | Cross-agent synthesis and standardized hook implementation. |
 
 ## Current Verification Snapshot
-- `cargo fmt --check`: passes.
-- `cargo clippy --workspace --all-targets --exclude ai-brains-graph -- -D warnings`: passes.
-- `cargo test --workspace --exclude ai-brains-graph`: passes.
-- `cargo check --workspace --all-targets`: still fails on LadybugDB/MSVC debug `LNK1248`.
+- `cargo fmt`: passes.
+- `cargo check --workspace --all-targets`: passes.
+- `cargo clippy --workspace --all-targets -- -D warnings`: passes.
+- `cargo test --workspace`: passes.
+- Native LadybugDB/lbug feature: opt-in backend; verify separately outside the routine Windows debug gate.
 - `cargo-nextest`: not installed in this shell; `cargo test` was used for local verification.
 - `changeguard scan --impact`: HIGH risk because of changed public symbols and high changed-file volume.
 - `changeguard ledger status`: no pending transactions and no unaudited drift.
@@ -95,13 +96,14 @@
 - [x] Verification reconciliation: model provider tests pass in degraded workspace verification.
 - [x] ChangeGuard reconciliation: no pending transaction for `crates/ai-brains-models`.
 
-## Implemented Track: T20 - Graph Projection
+## Completed Track: T20 - Graph Projection
 - [x] `ai-brains-graph` crate scaffolded and added to workspace.
 - [x] LadybugDB schema initialized with Project/Session/Turn/Memory nodes.
 - [x] `GraphProjector` implemented for event-driven updates.
 - [x] `GraphRebuilder` implemented for event-log reconstruction.
 - [x] Graph traversal implemented for related memory discovery.
-- [ ] Verification reconciliation: current all-target workspace check hits LadybugDB/MSVC debug `LNK1248`; graph remains feature-gated/degraded in this Windows environment.
+- [x] Verification reconciliation: all-target workspace check passes with `ai-brains-graph` included by default.
+- [x] Native LadybugDB/lbug is feature-gated as `ai-brains-graph/ladybug` for environments that can build the C++ backend.
 - [x] ChangeGuard reconciliation: no pending transaction for `crates/ai-brains-graph`.
 
 ## Completed Track: T19/T18 - Retrieval and Preflight

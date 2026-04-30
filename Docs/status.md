@@ -6,7 +6,7 @@
 ## 1. Executive Summary
 The AI-Brains system has evolved from a hardware-optimized local capture tool into a hardened, project-aware memory infrastructure. Recent work has focused on global Windows availability, robust project isolation, token-efficient retrieval indexing, and early cross-agent hook support.
 
-Important correction: the current Windows verification path is green only in degraded mode that excludes the LadybugDB graph crate. T20-T22 implementation artifacts are present in code, and ChangeGuard provenance has been reconciled locally; graph verification still needs a non-Windows or graph-isolated path before T20 should be treated as fully closed.
+Important correction: the current Windows verification path is green with the graph crate included. The default graph backend is a deterministic in-memory projection used for tests and local verification; the native LadybugDB/lbug backend remains available behind the `ladybug` feature and should be verified separately on a toolchain that does not hit the MSVC debug linker size limit.
 
 ## 2. Implemented Milestones Requiring Reconciliation
 
@@ -35,10 +35,11 @@ Important correction: the current Windows verification path is green only in deg
 - **Generic Hook Wrappers:** Hook documentation/scripts are present, but Gemini/Claude/Codex end-to-end hook verification remains incomplete.
 
 ## 4. Technical Integrity
-- **Pass:** `cargo fmt --check`.
-- **Pass:** `cargo clippy --workspace --all-targets --exclude ai-brains-graph -- -D warnings`.
-- **Pass:** `cargo test --workspace --exclude ai-brains-graph`.
-- **Not Green:** Full `cargo check --workspace --all-targets` still hits the documented LadybugDB/MSVC debug `LNK1248` graph build failure.
+- **Pass:** `cargo fmt`.
+- **Pass:** `cargo check --workspace --all-targets`.
+- **Pass:** `cargo clippy --workspace --all-targets -- -D warnings`.
+- **Pass:** `cargo test --workspace`.
+- **Native LadybugDB Note:** The `ai-brains-graph/ladybug` feature is opt-in on Windows. Microsoft documents `LNK1248` as an image-size linker failure; the default backend avoids pulling the C++ LadybugDB target into routine all-target gates.
 - **Tooling Note:** `cargo-nextest` is not installed in this shell; `cargo test` was used for the local verification pass.
 - **ChangeGuard:** `changeguard scan --impact` reports HIGH risk due changed-file/symbol volume. `changeguard ledger status` reports no pending transactions and no unaudited drift.
 

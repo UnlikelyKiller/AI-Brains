@@ -1,6 +1,5 @@
 use crate::errors::{GraphError, Result};
-use crate::ladybug::LadybugVault;
-use lbug::Value;
+use crate::ladybug::{LadybugVault, Value};
 use std::collections::HashMap;
 
 pub struct GraphSearch<'a> {

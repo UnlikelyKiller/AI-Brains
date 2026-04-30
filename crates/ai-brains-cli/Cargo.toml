@@ -34,7 +34,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [features]
 default = []
-graph = ["dep:ai-brains-graph"]
+graph = ["dep:ai-brains-graph", "ai-brains-graph/ladybug"]
 
 [dev-dependencies]
 tempfile.workspace = true

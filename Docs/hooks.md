@@ -30,7 +30,9 @@ The hooks are configured globally in `C:\Users\RyanB\.gemini\settings.json`.
 
 ## Hook Script Architecture
 
-The core logic resides in `C:\Users\RyanB\.ai-brains\scripts\target-gemini-hook.ps1`.
+The repo source of truth is `AI-Brains\scripts\target-gemini-hook.ps1`. The installed user-level copy resides in `C:\Users\RyanB\.ai-brains\scripts\target-gemini-hook.ps1`.
+
+`AI-Brains\scripts\fixed-hook.ps1` is the older Gemini source copy retained for reference; new edits should be made to `scripts\target-gemini-hook.ps1` and then reinstalled to the user-level script path.
 
 ### Key Improvements (Fixed 2026-04-28)
 1.  **Robust Stdin Handling**: Uses `[Console]::In.ReadToEnd()` to reliably capture JSON input from the Gemini CLI, bypassing common PowerShell pipeline issues.
