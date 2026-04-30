@@ -4,7 +4,7 @@
 **Status:** Completed
 **Phase:** Phase 15 - Cross-Agent Memory Synthesis [COMPLETED]
 **Current Track:** Finalized
-**Verification:** Full Windows workspace gate is green as of 2026-04-30. Default graph verified in workspace; native Ladybug opt-in. Cross-agent synthesis and harness hooks verified.
+**Verification:** Full Windows workspace gate is green as of 2026-04-30. Relational graph verified in workspace; cross-agent synthesis and harness hooks verified.
 
 ## Track Registry
 
@@ -35,13 +35,14 @@
 | T26 | Retention Forget | **Completed** | architecture-planner | Policy-based turn expiration and soft-delete. |
 | T27 | E2E Hardening | **Completed** | architecture-planner | Smoke testing and fault isolation. |
 | T28 | Cross-Agent Harness | **Completed** | Orchestrator | Cross-agent synthesis and standardized hook implementation. |
+| T29 | Relational Graph | **Completed** | Orchestrator | Migrate graph projection to SQLite (ADR-0009). |
 
 ## Current Verification Snapshot
 - `cargo fmt`: passes.
 - `cargo check --workspace --all-targets`: passes.
 - `cargo clippy --workspace --all-targets -- -D warnings`: passes.
 - `cargo test --workspace`: passes.
-- Native LadybugDB/lbug feature: opt-in backend; verify separately outside the routine Windows debug gate.
+- Relational graph: native SQLite backend; no C++ dependencies.
 - `cargo-nextest`: not installed in this shell; `cargo test` was used for local verification.
 - `changeguard scan --impact`: HIGH risk because of changed public symbols and high changed-file volume.
 - `changeguard ledger status`: no pending transactions and no unaudited drift.
@@ -96,15 +97,13 @@
 - [x] Verification reconciliation: model provider tests pass in degraded workspace verification.
 - [x] ChangeGuard reconciliation: no pending transaction for `crates/ai-brains-models`.
 
-## Completed Track: T20 - Graph Projection
+## Completed Track: T20 - Graph Projection (Superseded by T29)
 - [x] `ai-brains-graph` crate scaffolded and added to workspace.
-- [x] LadybugDB schema initialized with Project/Session/Turn/Memory nodes.
+- [x] Initial schema with Project/Session/Turn/Memory nodes.
 - [x] `GraphProjector` implemented for event-driven updates.
 - [x] `GraphRebuilder` implemented for event-log reconstruction.
 - [x] Graph traversal implemented for related memory discovery.
-- [x] Verification reconciliation: all-target workspace check passes with `ai-brains-graph` included by default.
-- [x] Native LadybugDB/lbug is feature-gated as `ai-brains-graph/ladybug` for environments that can build the C++ backend.
-- [x] ChangeGuard reconciliation: no pending transaction for `crates/ai-brains-graph`.
+- [x] Verification reconciliation: all-target workspace check passes.
 
 ## Completed Track: T19/T18 - Retrieval and Preflight
 - [x] Single writer queue supports concurrent ingest.
