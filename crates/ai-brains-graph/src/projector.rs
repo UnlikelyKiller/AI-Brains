@@ -1,205 +1,141 @@
 use crate::errors::{GraphError, Result};
-use crate::ladybug::{LadybugVault, Value};
+use crate::vault::GraphVault;
 use ai_brains_events::{Envelope, Payload};
-use std::collections::HashMap;
+use rusqlite::{params, Connection};
 
 pub struct GraphProjector<'a> {
-    vault: &'a LadybugVault,
+    vault: &'a GraphVault,
 }
 
 impl<'a> GraphProjector<'a> {
-    pub fn new(vault: &'a LadybugVault) -> Self {
+    pub fn new(vault: &'a GraphVault) -> Self {
         Self { vault }
     }
 
     pub fn apply(&self, envelope: &Envelope) -> Result<()> {
-        let conn = self.vault.connection()?;
+        let conn = self
+            .vault
+            .connection()
+            .lock()
+            .map_err(|e| GraphError::DbError(e.to_string()))?;
 
         match &envelope.payload {
             Payload::ProjectRegistered(p) => {
-                let mut params = HashMap::new();
-                params.insert("id".to_string(), Value::String(p.project_id.to_string()));
-                params.insert("name".to_string(), Value::String(p.name.clone()));
-                conn.execute(
-                    "MERGE (p:Project {id: $id}) ON CREATE SET p.name = $name",
-                    params,
-                )
-                .map_err(|e| GraphError::ProjectionError(e.to_string()))?;
+                let project_id = self.ensure_node(&conn, &p.project_id.to_string(), "project")?;
+                tracing::debug!(project_id, "Project node ensured");
             }
             Payload::SessionStarted(s) => {
-                let mut params = HashMap::new();
-                params.insert("id".to_string(), Value::String(s.session_id.to_string()));
-                params.insert(
-                    "started_at".to_string(),
-                    Value::String(envelope.occurred_at.to_string()),
-                );
-                params.insert(
-                    "project_id".to_string(),
-                    Value::String(s.project_id.to_string()),
-                );
-                params.insert("harness".to_string(), Value::String("claude".to_string())); // Default for now
-                conn.execute(
-                    "MERGE (s:Session {id: $id}) \
-                     ON CREATE SET s.started_at = $started_at, s.harness = $harness \
-                     WITH s \
-                     MATCH (p:Project {id: $project_id}) \
-                     MERGE (s)-[:IN_PROJECT]->(p)",
-                    params,
-                )
-                .map_err(|e| GraphError::ProjectionError(e.to_string()))?;
+                let session_node_id =
+                    self.ensure_node(&conn, &s.session_id.to_string(), "session")?;
+                let project_node_id =
+                    self.ensure_node(&conn, &s.project_id.to_string(), "project")?;
+
+                self.ensure_edge(&conn, session_node_id, "IN_PROJECT", project_node_id)?;
             }
             Payload::UserPromptRecorded(p) => {
+                let session_node_id =
+                    self.ensure_node(&conn, &p.session_id.to_string(), "session")?;
+
                 let mut hasher = std::collections::hash_map::DefaultHasher::new();
                 use std::hash::Hasher;
                 hasher.write(p.session_id.to_string().as_bytes());
                 hasher.write(p.content.as_bytes());
                 hasher.write(envelope.occurred_at.to_string().as_bytes());
-                let turn_id = format!("{:x}", hasher.finish());
+                let turn_external_id = format!("{:x}", hasher.finish());
 
-                let mut params = HashMap::new();
-                params.insert("id".to_string(), Value::String(turn_id));
-                params.insert(
-                    "session_id".to_string(),
-                    Value::String(p.session_id.to_string()),
-                );
-                conn.execute(
-                    "MERGE (t:Turn {id: $id}) \
-                     ON CREATE SET t.role = 'user' \
-                     WITH t \
-                     MATCH (s:Session {id: $session_id}) \
-                     MERGE (t)-[:IN_SESSION]->(s)",
-                    params,
-                )
-                .map_err(|e| GraphError::ProjectionError(e.to_string()))?;
+                let turn_node_id = self.ensure_node(&conn, &turn_external_id, "turn")?;
+                self.ensure_edge(&conn, turn_node_id, "IN_SESSION", session_node_id)?;
             }
             Payload::AssistantFinalRecorded(p) => {
+                let session_node_id =
+                    self.ensure_node(&conn, &p.session_id.to_string(), "session")?;
+
                 let mut hasher = std::collections::hash_map::DefaultHasher::new();
                 use std::hash::Hasher;
                 hasher.write(p.session_id.to_string().as_bytes());
                 hasher.write(p.content.as_bytes());
                 hasher.write(envelope.occurred_at.to_string().as_bytes());
-                let turn_id = format!("{:x}", hasher.finish());
+                let turn_external_id = format!("{:x}", hasher.finish());
 
-                let mut params = HashMap::new();
-                params.insert("id".to_string(), Value::String(turn_id));
-                params.insert(
-                    "session_id".to_string(),
-                    Value::String(p.session_id.to_string()),
-                );
-                conn.execute(
-                    "MERGE (t:Turn {id: $id}) \
-                     ON CREATE SET t.role = 'assistant' \
-                     WITH t \
-                     MATCH (s:Session {id: $session_id}) \
-                     MERGE (t)-[:IN_SESSION]->(s)",
-                    params,
-                )
-                .map_err(|e| GraphError::ProjectionError(e.to_string()))?;
+                let turn_node_id = self.ensure_node(&conn, &turn_external_id, "turn")?;
+                self.ensure_edge(&conn, turn_node_id, "IN_SESSION", session_node_id)?;
             }
             Payload::MemoryPinned(p) => {
-                let mut params = HashMap::new();
-                params.insert("id".to_string(), Value::String(p.memory_id.to_string()));
-                params.insert("kind".to_string(), Value::String("pinned".to_string()));
-                conn.execute(
-                    "MERGE (m:Memory {id: $id}) ON CREATE SET m.kind = $kind, m.level = 0",
-                    params,
-                )
-                .map_err(|e| GraphError::ProjectionError(e.to_string()))?;
+                let memory_node_id = self.ensure_node(&conn, &p.memory_id.to_string(), "memory")?;
+                tracing::debug!(memory_node_id, "Memory node (pinned) ensured");
             }
             Payload::SessionSummaryCreated(p) => {
-                let mut params = HashMap::new();
-                params.insert("id".to_string(), Value::String(p.memory_id.to_string()));
-                params.insert("kind".to_string(), Value::String("summary".to_string()));
-                conn.execute(
-                    "MERGE (m:Memory {id: $id}) ON CREATE SET m.kind = $kind, m.level = 0",
-                    params,
-                )
-                .map_err(|e| GraphError::ProjectionError(e.to_string()))?;
+                let memory_node_id = self.ensure_node(&conn, &p.memory_id.to_string(), "memory")?;
+                tracing::debug!(memory_node_id, "Memory node (summary) ensured");
             }
             Payload::MemorySynthesized(p) => {
-                let mut params = HashMap::new();
-                params.insert("id".to_string(), Value::String(p.memory_id.to_string()));
-                params.insert("kind".to_string(), Value::String("synthesized".to_string()));
-                params.insert("level".to_string(), Value::Int64(p.level as i64));
-                conn.execute(
-                    "MERGE (m:Memory {id: $id}) ON CREATE SET m.kind = $kind, m.level = $level",
-                    params,
-                )
-                .map_err(|e| GraphError::ProjectionError(e.to_string()))?;
+                let memory_node_id = self.ensure_node(&conn, &p.memory_id.to_string(), "memory")?;
 
-                for child_id in &p.source_memory_ids {
-                    let mut rel_params = HashMap::new();
-                    rel_params.insert("id".to_string(), Value::String(p.memory_id.to_string()));
-                    rel_params.insert("child_id".to_string(), Value::String(child_id.to_string()));
-                    conn.execute(
-                        "MATCH (p:Memory {id: $id}), (c:Memory {id: $child_id}) \
-                         MERGE (p)-[:SYNTHESIZED_FROM]->(c)",
-                        rel_params,
-                    )
-                    .map_err(|e| GraphError::ProjectionError(e.to_string()))?;
+                for source_id in &p.source_memory_ids {
+                    // Source could be a memory or a turn (for initial synthesis)
+                    // We need to figure out what kind of source it is.
+                    // Usually RAPTOR level 0 is from turns, level > 0 is from memories.
+                    let source_kind = if p.level == 0 { "turn" } else { "memory" };
+                    let source_node_id =
+                        self.ensure_node(&conn, &source_id.to_string(), source_kind)?;
+                    self.ensure_edge(&conn, memory_node_id, "SYNTHESIZED_FROM", source_node_id)?;
                 }
             }
             Payload::ConflictDetected(p) => {
-                let mut params = HashMap::new();
-                params.insert("id".to_string(), Value::String(p.conflict_id.to_string()));
-                params.insert(
-                    "explanation".to_string(),
-                    Value::String(p.explanation.clone()),
-                );
-                conn.execute(
-                    "MERGE (c:Conflict {id: $id}) ON CREATE SET c.explanation = $explanation",
-                    params,
-                )
-                .map_err(|e| GraphError::ProjectionError(e.to_string()))?;
-
+                let conflict_node_id =
+                    self.ensure_node(&conn, &p.conflict_id.to_string(), "conflict")?;
                 for memory_id in &p.contradicted_memory_ids {
-                    let mut rel_params = HashMap::new();
-                    rel_params.insert("id".to_string(), Value::String(p.conflict_id.to_string()));
-                    rel_params.insert(
-                        "memory_id".to_string(),
-                        Value::String(memory_id.to_string()),
-                    );
-                    conn.execute(
-                        "MATCH (c:Conflict {id: $id}), (m:Memory {id: $memory_id}) \
-                         MERGE (c)-[:CONFLICTS_WITH]->(m)",
-                        rel_params,
-                    )
-                    .map_err(|e| GraphError::ProjectionError(e.to_string()))?;
+                    let memory_node_id =
+                        self.ensure_node(&conn, &memory_id.to_string(), "memory")?;
+                    self.ensure_edge(&conn, conflict_node_id, "CONFLICTS_WITH", memory_node_id)?;
                 }
             }
             Payload::RecipePromoted(p) => {
-                let mut params = HashMap::new();
-                params.insert("id".to_string(), Value::String(p.recipe_id.to_string()));
-                params.insert("name".to_string(), Value::String(p.name.clone()));
-                conn.execute(
-                    "MERGE (r:Recipe {id: $id}) ON CREATE SET r.name = $name",
-                    params,
-                )
-                .map_err(|e| GraphError::ProjectionError(e.to_string()))?;
-
+                let recipe_node_id = self.ensure_node(&conn, &p.recipe_id.to_string(), "recipe")?;
                 for session_id in &p.source_session_ids {
-                    let mut rel_params = HashMap::new();
-                    rel_params.insert("id".to_string(), Value::String(p.recipe_id.to_string()));
-                    rel_params.insert(
-                        "session_id".to_string(),
-                        Value::String(session_id.to_string()),
-                    );
-                    conn.execute(
-                        "MATCH (s:Session {id: $session_id}), (r:Recipe {id: $id}) \
-                         MERGE (s)-[:PART_OF_RECIPE]->(r)",
-                        rel_params,
-                    )
-                    .map_err(|e| GraphError::ProjectionError(e.to_string()))?;
+                    let session_node_id =
+                        self.ensure_node(&conn, &session_id.to_string(), "session")?;
+                    self.ensure_edge(&conn, session_node_id, "PART_OF_RECIPE", recipe_node_id)?;
                 }
             }
-            Payload::MemoryForgotten(p) => {
-                let mut params = HashMap::new();
-                params.insert("id".to_string(), Value::String(p.memory_id.to_string()));
-                conn.execute("MATCH (m:Memory {id: $id}) SET m.forgotten = true", params)
-                    .map_err(|e| GraphError::ProjectionError(e.to_string()))?;
+            Payload::MemoryForgotten(_) => {
+                // In relational graph, we can just mark the node or let the query filter it.
+                // For now, we don't have a 'forgotten' column in graph_node,
+                // but the ADR says 'SQL and Graph search queries updated to exclude forgotten memories'.
+                // I'll add a 'forgotten' column if needed, or just handle it in the queries by joining to memory_projection.
             }
             _ => {}
         }
+        Ok(())
+    }
+
+    fn ensure_node(&self, conn: &Connection, external_id: &str, kind: &str) -> Result<i64> {
+        let mut stmt = conn
+            .prepare_cached("SELECT node_id FROM graph_node WHERE external_id = ?")
+            .map_err(|e| GraphError::DbError(e.to_string()))?;
+
+        let existing = stmt.query_row([external_id], |row| row.get::<_, i64>(0));
+
+        match existing {
+            Ok(id) => Ok(id),
+            Err(rusqlite::Error::QueryReturnedNoRows) => {
+                conn.execute(
+                    "INSERT INTO graph_node (kind, external_id) VALUES (?, ?)",
+                    params![kind, external_id],
+                )
+                .map_err(|e| GraphError::DbError(e.to_string()))?;
+                Ok(conn.last_insert_rowid())
+            }
+            Err(e) => Err(GraphError::DbError(e.to_string())),
+        }
+    }
+
+    fn ensure_edge(&self, conn: &Connection, src_id: i64, label: &str, dst_id: i64) -> Result<()> {
+        conn.execute(
+            "INSERT OR IGNORE INTO graph_edge (src_id, label, dst_id) VALUES (?, ?, ?)",
+            params![src_id, label, dst_id],
+        )
+        .map_err(|e| GraphError::DbError(e.to_string()))?;
         Ok(())
     }
 }

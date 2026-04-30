@@ -184,7 +184,7 @@ Canonical Encrypted Store
         v
 Brain Processing
   Nomic embeddings
-  LadybugDB graph projection
+  Relational SQLite graph projection
   FTS lexical search
   hybrid retrieval
   daily summaries
@@ -824,7 +824,7 @@ All critical components must be open for commercial use or isolated behind optio
 | HTTP client          | reqwest                   |                                 0.13.2 | MIT OR Apache-2.0          | Optional model/provider calls.                              |
 | Canonical DB binding | rusqlite                  |                                 0.39.0 | MIT                        | Use bundled SQLCipher feature if practical.                 |
 | Encrypted DB         | SQLCipher CE              | 4.14.0 / Android 4.14.1 where relevant | BSD-style                  | Encrypted SQLite vault.                                     |
-| Graph DB             | LadybugDB / lbug          |                                 0.15.3 | MIT                        | Embedded property graph, Cypher, vector/full-text features. |
+| Graph DB             | SQLite (Relational Graph) |                                  3.45+ | MIT                        | Relational graph model using Recursive CTEs.                |
 | Embeddings           | Nomic Embed Text v1.5     |                         768 dimensions | Provider/model terms apply | Default embedding model.                                    |
 | Local summarizer     | Gemma 4 E4B-it            |           latest local installed model | Model license/terms apply  | Local nightly summarization.                                |
 | Logging              | tracing                   |                                 0.1.41 | MIT                        | Rust instrumentation.                                       |

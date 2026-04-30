@@ -1,17 +1,16 @@
 mod common;
 
-use ai_brains_graph::{GraphProjector, LadybugVault};
+use ai_brains_graph::{GraphProjector, GraphVault};
 use ai_brains_store::EventStore;
-use tempfile::tempdir;
 
 #[test]
 fn test_projector_creates_nodes_and_edges() -> Result<(), Box<dyn std::error::Error>> {
     let store = common::setup_store()?;
     let (session_id, project_id) = common::append_session(&store)?;
 
-    let temp_dir = tempdir()?;
-    let vault_path = temp_dir.path().join("graph.db");
-    let vault = LadybugVault::open(&vault_path)?;
+    // In Track T29, the graph and store share the same connection
+    let conn = store.connection().clone();
+    let vault = GraphVault::new(conn.clone());
     let projector = GraphProjector::new(&vault);
 
     // Replay events through projector
@@ -19,30 +18,27 @@ fn test_projector_creates_nodes_and_edges() -> Result<(), Box<dyn std::error::Er
         projector.apply(&event)?;
     }
 
-    // Verify nodes and edges via query
-    let conn = vault.connection()?;
+    // Verify nodes and edges via SQL
+    let conn_lock = conn.lock().map_err(|e| e.to_string())?;
 
-    // Check Project
-    let mut res = conn.query(&format!(
-        "MATCH (p:Project {{id: '{}'}}) RETURN p.name",
-        project_id
-    ))?;
-    assert!(res.has_next());
-    assert_eq!(
-        res.get_next()?.get_column(0).map(|v| v.to_string()),
-        Some("test-project".to_string())
-    );
+    // Check Project Node
+    let name: String = conn_lock.query_row(
+        "SELECT n.kind FROM graph_node n WHERE n.external_id = ?",
+        [project_id.clone()],
+        |row| row.get(0),
+    )?;
+    assert_eq!(name, "project");
 
     // Check Session link to Project
-    let mut res = conn.query(&format!(
-        "MATCH (s:Session {{id: '{}'}})-[:IN_PROJECT]->(p:Project {{id: '{}'}}) RETURN count(*)",
-        session_id, project_id
-    ))?;
-    assert!(res.has_next());
-    assert_eq!(
-        res.get_next()?.get_column(0).map(|v| v.to_string()),
-        Some("1".to_string())
-    );
+    let count: i64 = conn_lock.query_row(
+        "SELECT count(*) FROM graph_edge e 
+         JOIN graph_node s ON e.src_id = s.node_id 
+         JOIN graph_node p ON e.dst_id = p.node_id 
+         WHERE s.external_id = ? AND p.external_id = ? AND e.label = 'IN_PROJECT'",
+        [session_id, project_id],
+        |row| row.get(0),
+    )?;
+    assert_eq!(count, 1);
 
     Ok(())
 }

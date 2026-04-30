@@ -9,8 +9,7 @@ This document records the intentional deviations from the original `Implementati
 
 ## 2. Graph Database Compilation (Phase 8 & 12)
 *   **Original Plan:** The `ai-brains-graph` crate, wrapping LadybugDB (a C++ embedded property graph DB), is a mandatory dependency for all retrieval and intelligence operations. Note: The PRD explicitly rejected the original KuzuDB in favor of the active LadybugDB/lbug fork.
-*   **Deviation:** Isolated the native LadybugDB/lbug backend behind the `ai-brains-graph/ladybug` Cargo feature. The graph crate now has a default deterministic in-memory backend for schema/projector/rebuild/query verification, while `ai-brains-cli` and `ai-brains-retrieval` enable the native backend only when their `graph` feature is requested.
-*   **Rationale:** While CMake and MSVC are installed on the Windows host, the LadybugDB C++ core triggers a documented MSVC debug linker limitation (`fatal error LNK1248: image size exceeds maximum allowable size (FFFFFFFF)`). Microsoft documents LNK1248 as an image-size linker failure, so the practical Windows-safe resolution is to keep the graph projection buildable and testable by default while making the native C++ backend opt-in for suitable toolchains.
+*   **Resolution (ADR-0009):** Replaced LadybugDB with a Relational Graph model in SQLite using Recursive CTEs. This eliminates the C++ build friction (MSVC Debug linker failure LNK1248) while maintaining the required graph traversal capabilities within the existing SQLCipher foundation.
 
 ## 3. Date & Time Management
 *   **Original Plan:** Not strictly specified, but generally leaned towards the `time` crate for lightweight timestamps.

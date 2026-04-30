@@ -10,6 +10,7 @@ The AI-Brains system is now fully implemented according to the Phase 15 roadmap.
 
 ### Phase 15: Cross-Agent Memory Synthesis
 - **Result:** [IMPLEMENTED]
+- **Relational Graph**: native SQLite backend for multi-hop traversal using Recursive CTEs.
 - **Deliverables:** `AggregatedLearningsService` and multi-level `MemorySynthesizer`. Implemented Level 2 synthesis for global knowledge extraction.
 - **Verification:** Verified via `crates/ai-brains-brain/tests/cross_agent_synthesis.rs`.
 
@@ -34,7 +35,7 @@ The AI-Brains system is now fully implemented according to the Phase 15 roadmap.
 - **Tests:** 64 tests passing (`cargo test --workspace`).
 - **Linter:** `cargo clippy` clean on all targets.
 - **Format:** `cargo fmt` applied.
-- **Graph:** Default backend verified in workspace gate; native Ladybug opt-in.
+- **Graph:** Relational: SQLite (Graph traversal using Recursive CTEs).
 - **ChangeGuard:** Ledger reconciled; no pending transactions or unaudited drift.
 
 ---

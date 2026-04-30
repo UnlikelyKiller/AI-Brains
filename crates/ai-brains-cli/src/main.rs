@@ -315,17 +315,10 @@ fn run_recall(
 
     // Attempt to open graph vault next to the main vault
     #[cfg(feature = "graph")]
-    let graph_vault = if let Some(path) = &cli.vault_path {
-        let graph_path = path.with_extension("graph.db");
-        ai_brains_graph::LadybugVault::open(graph_path).ok()
-    } else {
-        None
-    };
+    let graph_vault = ai_brains_graph::GraphVault::new(conn.clone());
 
     #[cfg(feature = "graph")]
-    let graph_search = graph_vault
-        .as_ref()
-        .map(|v| ai_brains_graph::queries::GraphSearch::new(v));
+    let graph_search = Some(ai_brains_graph::queries::GraphSearch::new(&graph_vault));
 
     #[cfg(not(feature = "graph"))]
     let graph_search: Option<ai_brains_retrieval::MockGraphSearch> = None;
@@ -363,17 +356,10 @@ fn run_preflight(
 
     // Attempt to open graph vault next to the main vault
     #[cfg(feature = "graph")]
-    let graph_vault = if let Some(path) = &cli.vault_path {
-        let graph_path = path.with_extension("graph.db");
-        ai_brains_graph::LadybugVault::open(graph_path).ok()
-    } else {
-        None
-    };
+    let graph_vault = ai_brains_graph::GraphVault::new(conn.clone());
 
     #[cfg(feature = "graph")]
-    let graph_search = graph_vault
-        .as_ref()
-        .map(|v| ai_brains_graph::queries::GraphSearch::new(v));
+    let graph_search = Some(ai_brains_graph::queries::GraphSearch::new(&graph_vault));
 
     #[cfg(not(feature = "graph"))]
     let graph_search: Option<ai_brains_retrieval::MockGraphSearch> = None;
