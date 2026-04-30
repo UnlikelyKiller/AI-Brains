@@ -37,6 +37,7 @@
 | T28 | Cross-Agent Harness | **Completed** | Orchestrator | Cross-agent synthesis and standardized hook implementation. |
 | T29 | Relational Graph | **Completed** | Orchestrator | Migrate graph projection to SQLite (ADR-0009). |
 | T30 | Hardening Protocol | **Completed** | Orchestrator | Optimization, encoding fixes, and agentic protocol overhaul. |
+| T31 | Onboarding & Observability | **In Progress** | Orchestrator | Integrate 4-layer repo understanding (ADR-0010). |
 
 ## Current Verification Snapshot
 - `cargo fmt`: passes.

@@ -8,8 +8,8 @@ The AI-Brains system has been hardened for production-grade reliability. Beyond 
 
 ## 2. Implemented Milestones
 
-### Track T30: Hardening & Protocol Optimization
-- **Result:** [IMPLEMENTED]
+###- [x] **Track T30: Hardening & Protocol Optimization** (Finalized JSON synthesis and PowerShell fixes)
+- [/] **Track T31: Onboarding & Observability Protocol** (Integrating 4-layer repo understanding)
 - **Index-First Preflight**: Token-efficient retrieval with robust word-budget truncation. Prioritizes a searchable index over full-text dumps.
 - **Encoding Resilience**: Enforced BOM-less UTF-8 encoding across all PowerShell harness hooks and ingest scripts, preventing Unicode corruption.
 - **Session Context**: Expanded the memory schema to support `session_id`, enabling thread reconstruction and contextual search.
