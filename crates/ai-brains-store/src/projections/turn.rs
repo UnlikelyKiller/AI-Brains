@@ -34,6 +34,25 @@ impl Projection for TurnProjection {
             rusqlite::params![session_id, turn_index, role, content, occurred_at],
         )?;
 
+        // Also project into memory for lexical search (recall)
+        let memory_id = ai_brains_core::ids::MemoryId::new();
+        let privacy = serde_json::to_string(&envelope.privacy)
+            .map_err(|e| StoreError::EventReadFailed(e.to_string()))?;
+
+        tx.execute(
+            "INSERT INTO memory_projection (memory_id, content, privacy, status, level, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)",
+            rusqlite::params![
+                memory_id.to_string(),
+                format!("{}: {}", role.to_uppercase(), content),
+                privacy,
+                "pinned", // Mark as pinned so it's searchable by default
+                0,
+                occurred_at,
+                occurred_at
+            ],
+        )?;
+
         Ok(())
     }
 }

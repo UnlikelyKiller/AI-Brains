@@ -1,6 +1,6 @@
-use std::path::PathBuf;
-use std::fs;
 use chrono::Utc;
+use std::fs;
+use std::path::PathBuf;
 
 pub struct BackupService {
     vault_path: PathBuf,
@@ -49,7 +49,7 @@ mod tests {
         let backup_path = service.run_backup()?;
 
         assert!(backup_path.exists());
-        assert!(backup_path.to_str().unwrap().contains("backups"));
+        assert!(backup_path.to_string_lossy().contains("backups"));
         assert_eq!(fs::read_to_string(backup_path)?, "vault content");
 
         Ok(())

@@ -21,12 +21,7 @@ impl Projection for RecipeProjection {
             tx.execute(
                 "INSERT INTO recipe_projection (recipe_id, name, steps_json, created_at)
                  VALUES (?, ?, ?, ?)",
-                rusqlite::params![
-                    p.recipe_id.to_string(),
-                    p.name,
-                    steps_json,
-                    occurred_at
-                ],
+                rusqlite::params![p.recipe_id.to_string(), p.name, steps_json, occurred_at],
             )?;
         }
 

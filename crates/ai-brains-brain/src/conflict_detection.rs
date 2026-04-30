@@ -1,4 +1,4 @@
-use ai_brains_core::ids::{ConflictId, MemoryId, SessionId};
+use ai_brains_core::ids::{ConflictId, SessionId};
 use ai_brains_events::{ConflictDetectedPayload, Payload};
 use ai_brains_models::{CompletionRequest, ModelProvider};
 use ai_brains_store::{EventStore, QueryStore};
@@ -23,7 +23,11 @@ impl ConflictDetectionService {
         }
     }
 
-    pub async fn check_for_conflicts(&self, session_id: &SessionId, summary: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn check_for_conflicts(
+        &self,
+        session_id: &SessionId,
+        summary: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         // 1. Retrieve potentially related memories via FTS
         // Create a more permissive query by joining words with OR
         let clean_query = summary
@@ -37,7 +41,7 @@ impl ConflictDetectionService {
             .join(" OR ");
 
         let related_memories = self.query_store.search_memories(&fts_query, 5)?;
-        
+
         if related_memories.is_empty() {
             return Ok(());
         }
@@ -55,13 +59,16 @@ impl ConflictDetectionService {
 
         let request = CompletionRequest {
             prompt,
-            system_prompt: Some("You are a helpful assistant detecting contradictions in developer knowledge.".to_string()),
+            system_prompt: Some(
+                "You are a helpful assistant detecting contradictions in developer knowledge."
+                    .to_string(),
+            ),
             max_tokens: Some(300),
             temperature: Some(0.1),
         };
 
         let response = self.model_provider.complete(request).await?;
-        
+
         if response.text.to_uppercase().contains("NO CONFLICT") {
             return Ok(());
         }

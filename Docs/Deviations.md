@@ -9,8 +9,8 @@ This document records the intentional deviations from the original `Implementati
 
 ## 2. Graph Database Compilation (Phase 8 & 12)
 *   **Original Plan:** The `ai-brains-graph` crate, wrapping LadybugDB (a C++ embedded property graph DB), is a mandatory dependency for all retrieval and intelligence operations. Note: The PRD explicitly rejected the original KuzuDB in favor of the active LadybugDB/lbug fork.
-*   **Deviation:** Isolated the graph database behind a Cargo feature flag (`graph`) in `ai-brains-cli` and `ai-brains-retrieval`. E2E smoke tests and the CLI now compile and run cleanly without the graph database using a dynamically typed mock (`MockGraphSearch`).
-*   **Rationale:** While CMake and MSVC are installed on the Windows host, the LadybugDB C++ core triggers a known MSVC limitation during debug builds (`fatal error LNK1248: image size exceeds maximum allowable size (FFFFFFFF)`). This 4GB size limit for static libraries in MSVC Debug mode prevents compilation. Decoupling the graph allows the core system (capture, store, summarization, retrieval) to remain highly portable and testable on Windows without complex MSVC workarounds.
+*   **Deviation:** Isolated the native LadybugDB/lbug backend behind the `ai-brains-graph/ladybug` Cargo feature. The graph crate now has a default deterministic in-memory backend for schema/projector/rebuild/query verification, while `ai-brains-cli` and `ai-brains-retrieval` enable the native backend only when their `graph` feature is requested.
+*   **Rationale:** While CMake and MSVC are installed on the Windows host, the LadybugDB C++ core triggers a documented MSVC debug linker limitation (`fatal error LNK1248: image size exceeds maximum allowable size (FFFFFFFF)`). Microsoft documents LNK1248 as an image-size linker failure, so the practical Windows-safe resolution is to keep the graph projection buildable and testable by default while making the native C++ backend opt-in for suitable toolchains.
 
 ## 3. Date & Time Management
 *   **Original Plan:** Not strictly specified, but generally leaned towards the `time` crate for lightweight timestamps.
@@ -26,3 +26,8 @@ This document records the intentional deviations from the original `Implementati
 *   **Original Plan:** Rely heavily on multi-hop graph traversal (LadybugDB) for memory synthesis and long-term intelligence.
 *   **Deviation:** Implemented RAPTOR-style hierarchical clustering and CRAG factual verification directly over the FTS/Lexical search read-models.
 *   **Rationale:** To protect the background Nightly worker from the instability of the C++ graph build on Windows, the synthesis engine was decoupled from the graph. It currently relies on the standard `QueryStore` interface, ensuring high-level knowledge extraction works purely on the SQLite event projections.
+
+## 6. Local Model Provider Integration (Phase 10 & 14)
+*   **Original Plan:** Use `OllamaProvider` as the primary local intelligence engine.
+*   **Deviation:** Implemented a custom `LlamaCppProvider` and transitioned to a multi-stage RAG strategy using environment-based model selection.
+*   **Rationale:** The user's environment uses a high-performance Intel Arc B580 with a custom `llama-server` router. The standard Ollama API was insufficient for the required multi-model swapping (BGE-M3 for embeddings, Qwen 3.5 for completion) within strict 12GB VRAM limits. The dynamic configuration via `.env` allows for rapid model swaps without code changes.

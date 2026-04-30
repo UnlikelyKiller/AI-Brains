@@ -1,6 +1,6 @@
 use crate::{
-    CompletionRequest, CompletionResponse, EmbeddingRequest, EmbeddingResponse, ModelProvider,
-    Result,
+    CompletionRequest, CompletionResponse, EmbeddingRequest, EmbeddingResponse, ModelError,
+    ModelProvider, Result,
 };
 use async_trait::async_trait;
 use std::sync::Mutex;
@@ -22,7 +22,10 @@ impl MockProvider {
 #[async_trait]
 impl ModelProvider for MockProvider {
     async fn complete(&self, _request: CompletionRequest) -> Result<CompletionResponse> {
-        let mut responses = self.responses.lock().unwrap();
+        let mut responses = self
+            .responses
+            .lock()
+            .map_err(|e| ModelError::Provider(format!("mock response lock poisoned: {e}")))?;
         if responses.is_empty() {
             return Ok(CompletionResponse {
                 text: "No more mock responses".to_string(),

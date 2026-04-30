@@ -9,7 +9,7 @@ license.workspace = true
 ai-brains-core = { path = "../ai-brains-core" }
 ai-brains-events = { path = "../ai-brains-events" }
 ai-brains-store = { path = "../ai-brains-store" }
-lbug = "0.15.3"
+rusqlite = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
@@ -17,5 +17,7 @@ uuid = { workspace = true }
 chrono = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
+
 [dev-dependencies]
+ai-brains-crypto = { path = "../ai-brains-crypto" }
 tempfile = "3.10"

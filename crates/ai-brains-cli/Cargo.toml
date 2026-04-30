@@ -27,10 +27,14 @@ ai-brains-events = { path = "../ai-brains-events" }
 ai-brains-core = { path = "../ai-brains-core" }
 tokio = { workspace = true }
 rusqlite = { workspace = true }
+dotenvy = { workspace = true }
+dirs = "6.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [features]
 default = []
-graph = ["dep:ai-brains-graph"]
+graph = ["dep:ai-brains-graph", "ai-brains-graph/ladybug"]
 
 [dev-dependencies]
 tempfile.workspace = true

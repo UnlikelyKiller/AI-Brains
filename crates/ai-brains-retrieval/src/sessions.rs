@@ -14,14 +14,24 @@ pub struct SessionContext {
     pub turns: Vec<SessionTurn>,
 }
 
-pub fn active_sessions(conn: &VaultConnection) -> Result<Vec<SessionContext>> {
+pub fn active_sessions(
+    conn: &VaultConnection,
+    project_id: Option<ai_brains_core::ids::ProjectId>,
+) -> Result<Vec<SessionContext>> {
     let conn = conn.lock()?;
-    let mut stmt = conn.prepare(
-        "SELECT session_id, privacy
+
+    let mut sql = "SELECT session_id, privacy
          FROM session_projection
-         WHERE status = 'active'
-         ORDER BY updated_at DESC",
-    )?;
+         WHERE status = 'active'"
+        .to_string();
+
+    if let Some(pid) = project_id {
+        sql.push_str(&format!(" AND project_id = '{}'", pid));
+    }
+
+    sql.push_str(" ORDER BY updated_at DESC");
+
+    let mut stmt = conn.prepare(&sql)?;
     let mut rows = stmt.query([])?;
     let mut active = Vec::new();
 

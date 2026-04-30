@@ -1,29 +1,29 @@
 use ai_brains_core::ids::{MemoryId, SessionId};
-use ai_brains_events::{Envelope, Payload, SessionSummaryCreatedPayload};
+use ai_brains_events::{Payload, SessionSummaryCreatedPayload};
 use ai_brains_models::{CompletionRequest, ModelProvider};
 use ai_brains_store::{EventStore, QueryStore};
 use std::str::FromStr;
 use std::sync::Arc;
 
-mod conflict_detection;
-mod recipe_promotion;
-mod memory_synthesis;
 mod backup;
+mod conflict_detection;
+mod memory_synthesis;
+mod recipe_promotion;
 mod retention;
 
-use conflict_detection::ConflictDetectionService;
-use recipe_promotion::RecipePromotionService;
-use memory_synthesis::MemorySynthesizer;
 pub use backup::BackupService;
+use conflict_detection::ConflictDetectionService;
+use memory_synthesis::MemorySynthesizer;
+use recipe_promotion::RecipePromotionService;
 pub use retention::RetentionService;
 
-pub struct NightlyService {
+pub struct AggregatedLearningsService {
     query_store: Arc<dyn QueryStore>,
     event_store: Arc<dyn EventStore>,
     model_provider: Arc<dyn ModelProvider>,
 }
 
-impl NightlyService {
+impl AggregatedLearningsService {
     pub fn new(
         query_store: Arc<dyn QueryStore>,
         event_store: Arc<dyn EventStore>,
@@ -33,6 +33,41 @@ impl NightlyService {
             query_store,
             event_store,
             model_provider,
+        }
+    }
+
+    pub async fn run_cross_agent_synthesis(&self) -> Result<usize, Box<dyn std::error::Error>> {
+        tracing::info!("Starting Phase 15: Cross-Agent Memory Synthesis (Level 2)");
+        let synthesizer = MemorySynthesizer::new(
+            self.query_store.clone(),
+            self.event_store.clone(),
+            self.model_provider.clone(),
+        );
+
+        // Synthesize Level 1 -> Level 2
+        synthesizer.run_synthesis(2).await
+    }
+}
+
+pub struct NightlyService {
+    query_store: Arc<dyn QueryStore>,
+    event_store: Arc<dyn EventStore>,
+    completion_provider: Arc<dyn ModelProvider>,
+    _embedding_provider: Arc<dyn ModelProvider>,
+}
+
+impl NightlyService {
+    pub fn new(
+        query_store: Arc<dyn QueryStore>,
+        event_store: Arc<dyn EventStore>,
+        completion_provider: Arc<dyn ModelProvider>,
+        embedding_provider: Arc<dyn ModelProvider>,
+    ) -> Self {
+        Self {
+            query_store,
+            event_store,
+            completion_provider,
+            _embedding_provider: embedding_provider,
         }
     }
 
@@ -52,9 +87,9 @@ impl NightlyService {
         let synthesizer = MemorySynthesizer::new(
             self.query_store.clone(),
             self.event_store.clone(),
-            self.model_provider.clone(),
+            self.completion_provider.clone(),
         );
-        if let Err(e) = synthesizer.run_synthesis().await {
+        if let Err(e) = synthesizer.run_synthesis(1).await {
             tracing::error!("Memory synthesis failed: {}", e);
         }
 
@@ -64,10 +99,23 @@ impl NightlyService {
             tracing::error!("Retention cleanup failed: {}", e);
         }
 
+        // Cross-Agent Synthesis (Phase 15)
+        let cross_agent = AggregatedLearningsService::new(
+            self.query_store.clone(),
+            self.event_store.clone(),
+            self.completion_provider.clone(),
+        );
+        if let Err(e) = cross_agent.run_cross_agent_synthesis().await {
+            tracing::error!("Cross-agent synthesis failed: {}", e);
+        }
+
         Ok(count)
     }
 
-    async fn summarize_session(&self, session_id_str: &str) -> Result<(), Box<dyn std::error::Error>> {
+    async fn summarize_session(
+        &self,
+        session_id_str: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let turns = self.query_store.get_session_turns(session_id_str)?;
         if turns.is_empty() {
             return Ok(());
@@ -92,7 +140,7 @@ impl NightlyService {
             temperature: Some(0.3),
         };
 
-        let response = self.model_provider.complete(request).await?;
+        let response = self.completion_provider.complete(request).await?;
         let memory_id = MemoryId::new();
         let session_id = SessionId::from_str(session_id_str)?;
 
@@ -103,11 +151,13 @@ impl NightlyService {
             ai_brains_events::Actor::System,
             ai_brains_core::privacy::Privacy::LocalOnly,
         )
-        .build(Payload::SessionSummaryCreated(SessionSummaryCreatedPayload {
-            session_id,
-            memory_id,
-            summary: response.text.clone(),
-        }))?;
+        .build(Payload::SessionSummaryCreated(
+            SessionSummaryCreatedPayload {
+                session_id,
+                memory_id,
+                summary: response.text.clone(),
+            },
+        ))?;
 
         self.event_store.append_event(&event)?;
 
@@ -115,19 +165,29 @@ impl NightlyService {
         let conflict_service = ConflictDetectionService::new(
             self.query_store.clone(),
             self.event_store.clone(),
-            self.model_provider.clone(),
+            self.completion_provider.clone(),
         );
         let recipe_service = RecipePromotionService::new(
             self.query_store.clone(),
             self.event_store.clone(),
-            self.model_provider.clone(),
+            self.completion_provider.clone(),
         );
 
         let summary_text = response.text;
-        if let Err(e) = conflict_service.check_for_conflicts(&session_id, &summary_text).await {
-            tracing::error!("Conflict detection failed for session {}: {}", session_id, e);
+        if let Err(e) = conflict_service
+            .check_for_conflicts(&session_id, &summary_text)
+            .await
+        {
+            tracing::error!(
+                "Conflict detection failed for session {}: {}",
+                session_id,
+                e
+            );
         }
-        if let Err(e) = recipe_service.promote_recipes(&session_id, &summary_text).await {
+        if let Err(e) = recipe_service
+            .promote_recipes(&session_id, &summary_text)
+            .await
+        {
             tracing::error!("Recipe promotion failed for session {}: {}", session_id, e);
         }
 

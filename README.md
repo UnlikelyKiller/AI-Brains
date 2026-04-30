@@ -9,30 +9,38 @@ Capture must be fast, durable, encrypted, and independent of every advanced memo
 - **Canonical Event Log**: SQLCipher-backed append-only history.
 - **CQRS Architecture**: Commands append events; queries read read-optimized projections.
 - **Privacy First**: Four levels of privacy protection (`CloudOk` to `Sealed`).
-- **Nightly Intelligence**: Background workers for summarization, conflict detection, and recipe promotion.
+- **Nightly Intelligence**: Background workers for summarization, conflict detection, and cross-agent synthesis (Phase 15).
 - **Windows Native**: First-class support for PowerShell, DPAPI, and Task Scheduler.
 
 ## Quick Start
 
-### Build
+### 1. Initialize a Vault
 ```powershell
-cargo build --release
+ai-brains init
 ```
 
-### Initialize Vault
+### 2. Set Up a Project
+Run this in any new repository to wire up project-specific isolation:
 ```powershell
-./target/release/ai-brains --vault-path ./vault.db init
+ai-brains context
 ```
 
-### Ingest a Turn
+### 3. Record a Turn
 ```powershell
-echo '{"session_id":"...", "project_id":"...", "harness_id":"...", "turn_id":"...", "role":"user", "content":"hello", "privacy":"CloudOk"}' | ./target/release/ai-brains --vault-path ./vault.db ingest
+powershell .agents/skills/ai-brains/scripts/ingest.ps1 -Content "Finalizing Phase 15..."
 ```
 
-### Recall
+### 4. Start a Session (Preflight)
 ```powershell
-./target/release/ai-brains --vault-path ./vault.db recall "hello"
+ai-brains preflight
 ```
+*Returns an indexed briefing followed by recent technical context.*
+
+## 📂 Configuration Hierarchy
+AI-Brains uses a hierarchical loading strategy for cross-repository flexibility:
+1.  **Local `.env`**: Scopes IDs to the current repo (Created via `context`).
+2.  **Global `~/.ai-brains/.env`**: Stores the shared `VAULT_PATH` and Model URLs.
+3.  **Env Vars**: Override any of the above.
 
 ## Documentation
 - [Architecture](./Docs/ARCHITECTURE.md)

@@ -3,12 +3,12 @@ use crate::errors::Result;
 use ai_brains_events::Envelope;
 use rusqlite::Transaction;
 
+pub mod conflict;
 pub mod memory;
 pub mod project;
+pub mod recipe;
 pub mod session;
 pub mod turn;
-pub mod conflict;
-pub mod recipe;
 
 pub trait Projection {
     fn apply(&self, tx: &Transaction, envelope: &Envelope) -> Result<()>;

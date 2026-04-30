@@ -47,10 +47,19 @@ ai-brains --vault-path ./vault.db recall "authentication logic" --limit 5
 ```
 
 ### Generating Preflight Context
+### Project Setup
+Before starting work in a new repository, initialize the local environment:
+```powershell
+ai-brains context
+```
+This command generates a deterministic `PROJECT_ID` based on your directory and a fresh `SESSION_ID`, storing them in a local `.env` file.
+
+### Context Generation (Preflight)
 Gather current session state and pinned memories for an LLM prompt.
 ```powershell
-ai-brains --vault-path ./vault.db preflight --max-words 1500
+ai-brains preflight --max-words 1500
 ```
+*Note: The output includes a **Briefing Index** (table of contents) followed by the detailed memories, optimized for AI token efficiency.*
 
 ## 4. Background Intelligence
 
@@ -98,3 +107,6 @@ If the graph features are missing on Windows, verify that the `graph` feature wa
 |---|---|
 | `AI_BRAINS_VAULT_PATH` | Default path to the vault database. |
 | `AI_BRAINS_KEY` | Hex-encoded SQLCipher key. |
+| `AI_BRAINS_MODEL_URL` | Endpoint for the local LLM router (default: http://127.0.0.1:8081). |
+| `AI_BRAINS_EMBEDDING_MODEL` | Alias of the embedding model in `models.ini` (e.g., `bge-m3`). |
+| `AI_BRAINS_COMPLETION_MODEL` | Alias of the completion model in `models.ini` (e.g., `qwen3.5-9b`). |

@@ -1,18 +1,17 @@
 #![allow(dead_code)]
 
-use ai_brains_core::ids::MemoryId;
 use ai_brains_core::privacy::Privacy;
 use ai_brains_crypto::DataKey;
 use ai_brains_events::{
     constructors::EventBuilder,
-    payload::{MemoryPinnedPayload, ProjectRegisteredPayload, SessionStartedPayload},
+    payload::{ProjectRegisteredPayload, SessionStartedPayload},
     Actor, AggregateType, EventKind, Payload,
 };
 use ai_brains_store::connection::VaultConnection;
-use ai_brains_store::event_store::EventStore;
+use ai_brains_store::event_store::{EventStore, SqliteEventStore};
 use tempfile::NamedTempFile;
 
-pub fn setup_store() -> Result<EventStore, Box<dyn std::error::Error>> {
+pub fn setup_store() -> Result<SqliteEventStore, Box<dyn std::error::Error>> {
     let temp_file = NamedTempFile::new()?;
     let db_path = temp_file
         .path()
@@ -23,15 +22,17 @@ pub fn setup_store() -> Result<EventStore, Box<dyn std::error::Error>> {
     let key = DataKey::generate();
     let sql_key = ai_brains_crypto::SqlCipherKey::from_data_key(&key);
 
-    let mut conn = VaultConnection::open(&db_path, &sql_key)?;
+    let conn = VaultConnection::open(&db_path, &sql_key)?;
     conn.migrate()?;
-    Ok(EventStore::new(conn))
+    Ok(SqliteEventStore::new(conn))
 }
 
-pub fn append_session(store: &mut EventStore) -> Result<(String, String), Box<dyn std::error::Error>> {
+pub fn append_session(
+    store: &SqliteEventStore,
+) -> Result<(String, String), Box<dyn std::error::Error>> {
     let session_id = ai_brains_core::ids::SessionId::new();
     let project_id = ai_brains_core::ids::ProjectId::new();
-    
+
     let project_payload = Payload::ProjectRegistered(ProjectRegisteredPayload {
         project_id,
         name: "test-project".to_string(),
@@ -44,7 +45,7 @@ pub fn append_session(store: &mut EventStore) -> Result<(String, String), Box<dy
         Privacy::CloudOk,
     )
     .build(project_payload)?;
-    store.append(&project_envelope)?;
+    store.append_event(&project_envelope)?;
 
     let payload = Payload::SessionStarted(SessionStartedPayload {
         session_id,
@@ -58,7 +59,7 @@ pub fn append_session(store: &mut EventStore) -> Result<(String, String), Box<dy
         Privacy::CloudOk,
     )
     .build(payload)?;
-    store.append(&envelope)?;
-    
+    store.append_event(&envelope)?;
+
     Ok((session_id.to_string(), project_id.to_string()))
 }

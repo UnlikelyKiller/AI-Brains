@@ -15,8 +15,10 @@ pub fn recall(
     graph: Option<&GraphSearch>,
     query: &str,
     limit: usize,
+    project_id: Option<ai_brains_core::ids::ProjectId>,
+    session_id: Option<ai_brains_core::ids::SessionId>,
 ) -> Result<Vec<RecallHit>> {
-    let mut hits = lexical_search(conn, query)?
+    let mut hits = lexical_search(conn, query, project_id, session_id)?
         .into_iter()
         .take(limit)
         .map(|memory| RecallHit {

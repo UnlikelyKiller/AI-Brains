@@ -16,7 +16,7 @@ impl TaskScheduler {
     /// task_name: Unique name for the task (e.g. "AI-Brains-Nightly")
     /// start_time: Format "HH:mm" (e.g. "03:00")
     pub fn render_create_command(exe_path: &str, task_name: &str, start_time: &str) -> String {
-        // We use single quotes around the path to handle spaces in Windows paths, 
+        // We use single quotes around the path to handle spaces in Windows paths,
         // as per schtasks requirements.
         format!(
             "schtasks /create /tn \"{}\" /tr \"'{}' nightly\" /sc daily /st {} /f",
@@ -38,7 +38,7 @@ mod tests {
         let cmd = TaskScheduler::render_create_command(
             r"C:\Program Files\AI-Brains\ai-brains.exe",
             "AI-Brains-Nightly",
-            "03:00"
+            "03:00",
         );
         assert_eq!(
             cmd,

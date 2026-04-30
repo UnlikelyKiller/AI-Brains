@@ -1,3 +1,5 @@
+#![allow(clippy::disallowed_methods)]
+
 use ai_brains_models::ollama::OllamaProvider;
 use ai_brains_models::{CompletionRequest, ModelProvider};
 use serde_json::json;

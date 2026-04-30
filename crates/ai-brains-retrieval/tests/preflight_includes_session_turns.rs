@@ -21,7 +21,7 @@ fn preflight_includes_session_turns() -> Result<(), Box<dyn std::error::Error>> 
         "The capital of France is Paris.",
     )?;
 
-    let context = build_preflight(store.connection(), None, 1500)?;
+    let context = build_preflight(store.connection(), None, 1500, None)?;
 
     // This is expected to fail currently as preflight.rs only lists active session IDs
     assert!(context.text.contains("What is the capital of France?"));

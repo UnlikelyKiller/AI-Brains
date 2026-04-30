@@ -3,7 +3,28 @@ use crate::{
     ModelProvider, Result,
 };
 use async_trait::async_trait;
-use serde_json::json;
+use serde::Serialize;
+
+#[derive(Serialize)]
+struct OllamaOptions {
+    num_predict: Option<u32>,
+    temperature: Option<f32>,
+}
+
+#[derive(Serialize)]
+struct OllamaCompletionRequest<'a> {
+    model: &'a str,
+    prompt: &'a str,
+    system: &'a Option<String>,
+    stream: bool,
+    options: OllamaOptions,
+}
+
+#[derive(Serialize)]
+struct OllamaEmbeddingRequest<'a> {
+    model: &'a str,
+    prompt: &'a str,
+}
 
 pub struct OllamaProvider {
     endpoint: String,
@@ -20,16 +41,16 @@ impl OllamaProvider {
 impl ModelProvider for OllamaProvider {
     async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
         let client = reqwest::Client::new();
-        let body = json!({
-            "model": self.model,
-            "prompt": request.prompt,
-            "system": request.system_prompt,
-            "stream": false,
-            "options": {
-                "num_predict": request.max_tokens,
-                "temperature": request.temperature,
-            }
-        });
+        let body = OllamaCompletionRequest {
+            model: &self.model,
+            prompt: &request.prompt,
+            system: &request.system_prompt,
+            stream: false,
+            options: OllamaOptions {
+                num_predict: request.max_tokens,
+                temperature: request.temperature,
+            },
+        };
 
         let res = client
             .post(format!("{}/api/generate", self.endpoint))
@@ -62,10 +83,10 @@ impl ModelProvider for OllamaProvider {
 
     async fn embed(&self, request: EmbeddingRequest) -> Result<EmbeddingResponse> {
         let client = reqwest::Client::new();
-        let body = json!({
-            "model": self.model,
-            "prompt": request.text,
-        });
+        let body = OllamaEmbeddingRequest {
+            model: &self.model,
+            prompt: &request.text,
+        };
 
         let res = client
             .post(format!("{}/api/embeddings", self.endpoint))

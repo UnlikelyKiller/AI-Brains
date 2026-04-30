@@ -1,15 +1,15 @@
+use crate::errors::Result;
 use crate::ladybug::LadybugVault;
 use crate::projector::GraphProjector;
-use crate::errors::Result;
 use ai_brains_store::EventStore;
 
 pub struct GraphRebuilder<'a> {
     vault: &'a LadybugVault,
-    store: &'a EventStore,
+    store: &'a dyn EventStore,
 }
 
 impl<'a> GraphRebuilder<'a> {
-    pub fn new(vault: &'a LadybugVault, store: &'a EventStore) -> Self {
+    pub fn new(vault: &'a LadybugVault, store: &'a dyn EventStore) -> Self {
         Self { vault, store }
     }
 

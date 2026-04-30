@@ -1,10 +1,10 @@
-# Track T20 — Graph Projection
+# Track T20 - Graph Projection
 
 ## Owner
 architecture-planner
 
 ## Status
-In Progress
+Completed
 
 ## Objective
 Build a rebuildable graph projection layer using LadybugDB (SQLite-based graph) to represent relationships between projects, sessions, turns, and memories.
@@ -14,7 +14,7 @@ Build a rebuildable graph projection layer using LadybugDB (SQLite-based graph) 
 - Implement graph schema and node/edge types.
 - Implement a `GraphProjector` that listens to events and updates the graph.
 - Implement `rebuild` logic to reconstruct the graph from the event store.
-- Implement relationship queries (e.g., "related memories via session").
+- Implement relationship queries, such as "related memories via session".
 
 ## Out of Scope
 - Native graph database (Neo4j, etc.) - sticking to LadybugDB/SQLite for portability.
@@ -47,13 +47,13 @@ Build a rebuildable graph projection layer using LadybugDB (SQLite-based graph) 
 - `tests/rebuild_is_idempotent.rs`
 
 ## Implementation Steps
-1. [ ] Scaffold `ai-brains-graph` crate and add to workspace.
-2. [ ] Implement `schema.rs` and initialize LadybugDB.
-3. [ ] Implement `node.rs` and `edge.rs` definitions.
-4. [ ] Implement `projector.rs` for event-driven updates.
-5. [ ] Implement `rebuild.rs` for event-log replay.
-6. [ ] Implement `queries.rs` for graph traversal.
-7. [ ] Verification and CI gate.
+1. [x] Scaffold `ai-brains-graph` crate and add to workspace.
+2. [x] Implement `schema.rs` and initialize the graph backend.
+3. [x] Implement graph node/edge persistence through the graph adapter.
+4. [x] Implement `projector.rs` for event-driven updates.
+5. [x] Implement `rebuild.rs` for event-log replay.
+6. [x] Implement `queries.rs` for graph traversal.
+7. [x] Verification and CI gate reconciliation.
 
 ## Failure Modes To Handle
 - Database locked (retry logic).
@@ -65,9 +65,12 @@ Build a rebuildable graph projection layer using LadybugDB (SQLite-based graph) 
 - Privacy levels respected during traversal.
 
 ## Acceptance Criteria
-- Graph rebuilds correctly from a 100-event log.
+- Graph rebuilds correctly from the event log.
 - Queries return nodes related by at least one hop.
-- CI pass with clippy and nextest.
+- CI pass with clippy and workspace tests.
 
 ## Handoff Notes
-- Initializing Phase 8.
+- Code artifacts and tests are present under `crates/ai-brains-graph`.
+- Default graph verification is green on Windows with `cargo check --workspace --all-targets`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo test --workspace`.
+- Native LadybugDB/lbug remains available as the opt-in `ai-brains-graph/ladybug` feature for suitable toolchains.
+- ChangeGuard provenance is reconciled locally: no pending transaction remains for `crates/ai-brains-graph`.

@@ -1,13 +1,15 @@
+#![allow(clippy::disallowed_methods)]
+
 use ai_brains_brain::NightlyService;
 use ai_brains_core::ids::{MemoryId, ProjectId, SessionId};
 use ai_brains_core::privacy::Privacy;
 use ai_brains_events::{
-    constructors::EventBuilder, Actor, AggregateType, EventKind, Payload,
-    ProjectRegisteredPayload, MemoryPinnedPayload, SessionStartedPayload,
-    UserPromptRecordedPayload, SessionCompletedPayload,
+    constructors::EventBuilder, Actor, AggregateType, EventKind, MemoryPinnedPayload, Payload,
+    ProjectRegisteredPayload, SessionCompletedPayload, SessionStartedPayload,
+    UserPromptRecordedPayload,
 };
 use ai_brains_models::{CompletionResponse, MockProvider};
-use ai_brains_store::{EventStore, SqliteEventStore, VaultConnection, QueryStore};
+use ai_brains_store::{EventStore, QueryStore, SqliteEventStore, VaultConnection};
 use std::sync::Arc;
 use tempfile::tempdir;
 
@@ -18,7 +20,7 @@ async fn test_conflict_and_recipe_detection() -> Result<(), Box<dyn std::error::
     let key = ai_brains_crypto::DataKey::generate();
     let sql_key = ai_brains_crypto::SqlCipherKey::from_data_key(&key);
 
-    let mut vault = VaultConnection::open(db_path, &sql_key)?;
+    let vault = VaultConnection::open(db_path, &sql_key)?;
     vault.migrate()?;
     let vault = Arc::new(vault);
     let event_store = Arc::new(SqliteEventStore::new((*vault).clone()));
@@ -99,7 +101,10 @@ async fn test_conflict_and_recipe_detection() -> Result<(), Box<dyn std::error::
 
     // Verify search works
     let search_results = query_store.search_memories("port", 10)?;
-    assert!(!search_results.is_empty(), "FTS should find the memory about port");
+    assert!(
+        !search_results.is_empty(),
+        "FTS should find the memory about port"
+    );
 
     // 3. Mock Provider responses
     // Response 1: Summary
@@ -121,22 +126,36 @@ async fn test_conflict_and_recipe_detection() -> Result<(), Box<dyn std::error::
     ]));
 
     // 4. Run Nightly Service
-    let nightly = NightlyService::new(query_store, event_store.clone(), mock_provider);
+    let nightly = NightlyService::new(
+        query_store,
+        event_store.clone(),
+        mock_provider.clone(),
+        mock_provider,
+    );
     let count = nightly.run_nightly().await?;
     assert_eq!(count, 1);
 
     // 5. Verify Projections
     let conn = vault.lock()?;
-    
+
     // Verify Conflict
-    let conflict_count: i64 = conn.query_row("SELECT COUNT(*) FROM conflict_projection", [], |row| row.get(0))?;
+    let conflict_count: i64 =
+        conn.query_row("SELECT COUNT(*) FROM conflict_projection", [], |row| {
+            row.get(0)
+        })?;
     assert_eq!(conflict_count, 1);
-    
+
     // Verify Recipe
-    let recipe_count: i64 = conn.query_row("SELECT COUNT(*) FROM recipe_projection", [], |row| row.get(0))?;
+    let recipe_count: i64 =
+        conn.query_row("SELECT COUNT(*) FROM recipe_projection", [], |row| {
+            row.get(0)
+        })?;
     assert_eq!(recipe_count, 1);
-    
-    let recipe_name: String = conn.query_row("SELECT name FROM recipe_projection LIMIT 1", [], |row| row.get(0))?;
+
+    let recipe_name: String =
+        conn.query_row("SELECT name FROM recipe_projection LIMIT 1", [], |row| {
+            row.get(0)
+        })?;
     assert_eq!(recipe_name, "Port Fix Workaround");
 
     Ok(())

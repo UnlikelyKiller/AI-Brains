@@ -50,6 +50,10 @@ pub const MIGRATIONS: &[(&str, &str)] = &[
         "0012_retention_support",
         include_str!("../migrations/0012_retention_support.sql"),
     ),
+    (
+        "0013_relational_graph",
+        include_str!("../migrations/0013_relational_graph.sql"),
+    ),
 ];
 
 pub fn apply_migrations(conn: &mut Connection) -> Result<()> {

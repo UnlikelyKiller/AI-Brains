@@ -1,10 +1,10 @@
-# Track T22 — Nightly Summaries
+# Track T22 - Nightly Summaries
 
 ## Owner
 architecture-planner
 
 ## Status
-In Progress
+Implemented / Verification and Provenance Reconciliation Pending
 
 ## Objective
 Implement the nightly background process that generates summaries for completed sessions and daily activity.
@@ -45,11 +45,11 @@ Implement the nightly background process that generates summaries for completed 
 - `tests/nightly_skips_summarized_sessions.rs`
 
 ## Implementation Steps
-1. [ ] Scaffold `ai-brains-brain` crate and add to workspace.
-2. [ ] Implement `NightlyService` loop.
-3. [ ] Implement session summarization logic with `ModelProvider`.
-4. [ ] Implement event emission for summaries.
-5. [ ] Verification and CI gate.
+1. [x] Scaffold `ai-brains-brain` crate and add to workspace.
+2. [x] Implement `NightlyService` loop.
+3. [x] Implement session summarization logic with `ModelProvider`.
+4. [x] Implement event emission for summaries.
+5. [x] Verification and CI gate reconciliation for degraded Windows workspace.
 
 ## Failure Modes To Handle
 - Model provider offline (graceful degradation, skip summary, record partial failure).
@@ -66,4 +66,8 @@ Implement the nightly background process that generates summaries for completed 
 - CI pass with clippy and nextest.
 
 ## Handoff Notes
-- Phase 9 final track.
+- `NightlyService` exists and is wired into the CLI nightly command.
+- Brain tests have been updated for the current `NightlyService::new` signature and pass in degraded Windows workspace verification.
+- Full all-target verification remains blocked by the graph crate's documented LadybugDB/MSVC debug linker issue.
+- `AggregatedLearningsService` is present in the same crate, but its cross-agent synthesis method is still a stub and belongs to T28 follow-up.
+- ChangeGuard provenance is reconciled locally: no pending transaction remains for `crates/ai-brains-brain`.
