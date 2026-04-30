@@ -53,6 +53,29 @@ pub fn build_preflight(
     }
 
     let mut sections = Vec::new();
+
+    // --- Onboarding & Safety Section (Max 15% of budget) ---
+    let onboarding_budget = (max_words * 15) / 100;
+    let mut safety_lines = Vec::new();
+    
+    // Look for INVARIANTS and CONSTRAINTS specifically for the safety section
+    let mut safety_stmt = conn.prepare(
+        "SELECT content FROM memory_projection 
+         WHERE (content LIKE '%CONSTRAINT:%' OR content LIKE '%INVARIANT:%' OR content LIKE '%HOTSPOT:%')
+         AND status = 'pinned' 
+         ORDER BY updated_at DESC LIMIT 10"
+    )?;
+    let mut safety_rows = safety_stmt.query([])?;
+    while let Some(row) = safety_rows.next()? {
+        let content: String = row.get(0)?;
+        safety_lines.push(content);
+    }
+
+    if !safety_lines.is_empty() {
+        let safety_text = format!("--- Repository Bearings & Safety ---\n{}", safety_lines.join("\n\n"));
+        sections.push(trim_to_word_budget(&safety_text, onboarding_budget));
+    }
+
     if !active.is_empty() {
         let mut session_texts = Vec::new();
         for session in active {
@@ -64,6 +87,7 @@ pub fn build_preflight(
         }
         sections.push(session_texts.join("\n\n"));
     }
+
     if !collected.is_empty() {
         // 1. Build the index section
         let mut index_lines = vec!["--- Memory Index (Briefing) ---".to_string()];
@@ -88,16 +112,18 @@ pub fn build_preflight(
         }
 
         // 3. Assemble with budget awareness
+        let remaining_budget = max_words.saturating_sub(word_count(&sections.join("\n\n")));
         let full_text = format!("{}\n\n{}", index_text, detailed_text);
-        if word_count(&full_text) <= max_words {
+        
+        if word_count(&full_text) <= remaining_budget {
             sections.push(full_text);
         } else {
             // If full text doesn't fit, prioritize index
-            if word_count(&index_text) <= max_words {
+            if word_count(&index_text) <= remaining_budget {
                 sections.push(index_text);
             } else {
                 // If even index doesn't fit, truncate it
-                sections.push(trim_to_word_budget(&index_text, max_words));
+                sections.push(trim_to_word_budget(&index_text, remaining_budget));
                 sections.push("... [Index Truncated]".to_string());
             }
         }
