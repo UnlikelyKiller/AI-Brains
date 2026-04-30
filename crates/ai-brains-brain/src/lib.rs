@@ -18,9 +18,9 @@ use recipe_promotion::RecipePromotionService;
 pub use retention::RetentionService;
 
 pub struct AggregatedLearningsService {
-    _query_store: Arc<dyn QueryStore>,
-    _event_store: Arc<dyn EventStore>,
-    _model_provider: Arc<dyn ModelProvider>,
+    query_store: Arc<dyn QueryStore>,
+    event_store: Arc<dyn EventStore>,
+    model_provider: Arc<dyn ModelProvider>,
 }
 
 impl AggregatedLearningsService {
@@ -30,16 +30,22 @@ impl AggregatedLearningsService {
         model_provider: Arc<dyn ModelProvider>,
     ) -> Self {
         Self {
-            _query_store: query_store,
-            _event_store: event_store,
-            _model_provider: model_provider,
+            query_store,
+            event_store,
+            model_provider,
         }
     }
 
     pub async fn run_cross_agent_synthesis(&self) -> Result<usize, Box<dyn std::error::Error>> {
-        tracing::info!("Starting Phase 15: Cross-Agent Memory Synthesis");
-        // Implementation details will follow in the next turn
-        Ok(0)
+        tracing::info!("Starting Phase 15: Cross-Agent Memory Synthesis (Level 2)");
+        let synthesizer = MemorySynthesizer::new(
+            self.query_store.clone(),
+            self.event_store.clone(),
+            self.model_provider.clone(),
+        );
+
+        // Synthesize Level 1 -> Level 2
+        synthesizer.run_synthesis(2).await
     }
 }
 
@@ -83,7 +89,7 @@ impl NightlyService {
             self.event_store.clone(),
             self.completion_provider.clone(),
         );
-        if let Err(e) = synthesizer.run_synthesis().await {
+        if let Err(e) = synthesizer.run_synthesis(1).await {
             tracing::error!("Memory synthesis failed: {}", e);
         }
 

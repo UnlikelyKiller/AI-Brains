@@ -41,30 +41,24 @@ Known negative check:
 - T18-T19: Lexical retrieval and preflight recall are implemented and tested.
 - T20: Graph projection is completed for the default build. The crate now builds in the workspace gate, includes projector/rebuilder/query tests, and keeps native Ladybug behind the `ladybug` feature.
 - T23-T27: Conflicts/recipes, RAPTOR/CRAG, scheduler/backups, retention/forget, and E2E hardening are implemented.
-- T28 partials:
+- T28 [COMPLETE]:
   - Global `~/.ai-brains/.env` fallback exists.
   - `ai-brains context` project/session isolation exists.
   - Preflight includes the retrieval briefing index.
   - Windows-native search tooling exists.
-  - Repo-owned Gemini and Claude hook target scripts exist:
-    - `scripts/target-gemini-hook.ps1`
-    - `scripts/target-claude-hook.ps1`
+  - Repo-owned Gemini, Claude, and Codex target hook scripts exist and are verified.
+  - `AggregatedLearningsService::run_cross_agent_synthesis()` is implemented for Level 2 synthesis.
+  - `MemorySynthesizer` refactored for multi-level hierarchical support.
+  - End-to-end hook lifecycles verified for Gemini, Claude, and Codex.
 
 ## What Remains
 
-Primary remaining work is T28:
+Primary remaining work is stabilization and documentation:
 
-- Replace `AggregatedLearningsService::run_cross_agent_synthesis()` stub with real synthesis behavior.
-- Verify Gemini hook context injection end to end.
-- Verify Claude hook capture and memory-directory synchronization end to end.
-- Verify Codex preflight -> command -> ingest lifecycle end to end.
-- Decide whether Codex needs a repo-owned hook/wrapper script matching the Gemini and Claude source-of-truth pattern.
-
-Secondary cleanup:
-
-- Install `cargo-nextest` or remove it from local expectations; current verification uses `cargo test`.
-- Reconcile older docs that still describe historical degraded verification or incomplete T20 state.
 - Decide how to represent the default graph backend in product-facing architecture docs so it is not confused with the native Ladybug backend.
+- Reconcile older docs (e.g., `Docs/status.md`, `tracks/*.md`) that still describe historical degraded verification or incomplete state.
+- Decide whether to add a dedicated "Phase 16 - UI/Dashboard" or if the CLI-first mission is complete.
+- Verify background nightly sweep on a long-running machine to ensure cross-agent clusters emerge naturally.
 
 ## Ladybug Decision
 

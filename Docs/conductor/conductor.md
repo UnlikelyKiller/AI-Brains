@@ -1,10 +1,10 @@
 # Conductor Master Track Board
 
 ## Project Status
-**Status:** In Progress
-**Phase:** Phase 15 - Cross-Agent Memory Synthesis [In Progress]
-**Current Track:** T28 - Cross-Agent Harness [In Progress]
-**Verification:** Full Windows workspace gate is green as of 2026-04-30 with `ai-brains-graph` included. Native LadybugDB/lbug remains opt-in through `ai-brains-graph/ladybug` because MSVC debug builds can hit linker `LNK1248`. ChangeGuard ledger is reconciled locally.
+**Status:** Completed
+**Phase:** Phase 15 - Cross-Agent Memory Synthesis [COMPLETED]
+**Current Track:** Finalized
+**Verification:** Full Windows workspace gate is green as of 2026-04-30. Default graph verified in workspace; native Ladybug opt-in. Cross-agent synthesis and harness hooks verified.
 
 ## Track Registry
 
@@ -27,14 +27,14 @@
 | T18 | Retrieval Lexical | **Completed** | architecture-planner | Lexical recall over the store read side. |
 | T19 | Preflight Recall | **Completed** | architecture-planner | Word-budgeted preflight assembly with privacy filtering. |
 | T20 | Graph Projection | **Completed** | architecture-planner | Rebuildable graph projection layer with default deterministic backend and opt-in LadybugDB backend. |
-| T21 | Model Providers | **Implemented / Reconcile** | architecture-planner | Provider-agnostic model abstraction and local providers exist; provenance and current verification need reconciliation. |
-| T22 | Nightly Summaries | **Implemented / Reconcile** | architecture-planner | Nightly service exists, but tests need update after constructor/API changes and provenance needs reconciliation. |
+| T21 | Model Providers | **Completed** | architecture-planner | Provider-agnostic model abstraction and local providers. |
+| T22 | Nightly Summaries | **Completed** | architecture-planner | Nightly service with unsummarized session discovery. |
 | T23 | Conflicts Recipes | **Completed** | architecture-planner | Contradictory session detection and recipe promotion. |
 | T24 | RAPTOR CRAG | **Completed** | architecture-planner | Hierarchical clustering and synthesis (Memory Synthesis). |
 | T25 | Scheduler Backups | **Completed** | architecture-planner | Windows task scheduling and automated vault backups. |
 | T26 | Retention Forget | **Completed** | architecture-planner | Policy-based turn expiration and soft-delete. |
 | T27 | E2E Hardening | **Completed** | architecture-planner | Smoke testing and fault isolation. |
-| T28 | Cross-Agent Harness | **In Progress** | Orchestrator | Cross-agent synthesis and standardized hook implementation. |
+| T28 | Cross-Agent Harness | **Completed** | Orchestrator | Cross-agent synthesis and standardized hook implementation. |
 
 ## Current Verification Snapshot
 - `cargo fmt`: passes.

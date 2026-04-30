@@ -23,20 +23,27 @@ impl MemorySynthesizer {
         }
     }
 
-    pub async fn run_synthesis(&self) -> Result<usize, Box<dyn std::error::Error>> {
-        // 1. Get all memories at level 0 that haven't been synthesized yet
-        // For now, we'll just get all level 0 memories and cluster them.
-        // In a real system, we'd track which ones are 'processed'.
-        let level_0_memories = self.query_store.get_memories_by_level(0)?;
-        if level_0_memories.len() < 2 {
+    pub async fn run_synthesis(
+        &self,
+        target_level: u32,
+    ) -> Result<usize, Box<dyn std::error::Error>> {
+        if target_level == 0 {
+            return Ok(0);
+        }
+
+        // 1. Get all memories at source level that haven't been synthesized yet
+        let source_level = target_level - 1;
+        let source_memories = self.query_store.get_memories_by_level(source_level)?;
+
+        // Find memories that aren't already parents in the hierarchy
+        // For now, we'll just synthesize what we have if we have enough.
+        // A more advanced implementation would track 'new' memories specifically.
+        if source_memories.len() < 2 {
             return Ok(0);
         }
 
         // 2. Cluster them
-        // For level-1 clustering, we'll use a simple heuristic for now:
-        // Group by 5 memories each or use the LLM to find groups.
-        // Real RAPTOR uses GMM on embeddings.
-        let clusters = self.cluster_memories(&level_0_memories).await?;
+        let clusters = self.cluster_memories(&source_memories).await?;
 
         let mut count = 0;
         for cluster in clusters {
@@ -45,12 +52,13 @@ impl MemorySynthesizer {
             }
 
             // 3. Summarize the cluster
-            let synthesis = self.synthesize_cluster(&cluster).await?;
+            let synthesis = self.synthesize_cluster(&cluster, target_level).await?;
 
             // 4. CRAG: Verify the synthesis
             if !self.verify_synthesis(&cluster, &synthesis).await? {
                 tracing::warn!(
-                    "Synthesized memory was rejected by CRAG verification: {}",
+                    "Synthesized level {} memory was rejected by CRAG verification: {}",
+                    target_level,
                     synthesis
                 );
                 continue;
@@ -71,7 +79,7 @@ impl MemorySynthesizer {
                 memory_id,
                 content: synthesis,
                 source_memory_ids,
-                level: 1,
+                level: target_level,
             }))?;
 
             self.event_store.append_event(&event)?;
@@ -97,6 +105,7 @@ impl MemorySynthesizer {
     async fn synthesize_cluster(
         &self,
         cluster: &[(MemoryId, String)],
+        level: u32,
     ) -> Result<String, Box<dyn std::error::Error>> {
         let mut contents = String::new();
         for (_, content) in cluster {
@@ -105,16 +114,25 @@ impl MemorySynthesizer {
             contents.push('\n');
         }
 
+        let role = if level == 1 {
+            "synthesizing developer session history"
+        } else {
+            "aggregating high-level architectural and process learnings"
+        };
+
         let prompt = format!(
-            "Synthesize the following related session summaries into a single, high-level knowledge node. \
-             Focus on recurring patterns, shared technical context, and cumulative progress.\n\n\
-             Summaries:\n{}",
-            contents
+            "Synthesize the following related level {} memories into a single, higher-level knowledge node (Level {}). \
+             Focus on recurring patterns, shared technical context, and cumulative progress across sessions and agents.\n\n\
+             Memories:\n{}",
+            level - 1, level, contents
         );
 
         let request = CompletionRequest {
             prompt,
-            system_prompt: Some("You are a principal engineer synthesizing developer session history into a knowledge base.".to_string()),
+            system_prompt: Some(format!(
+                "You are a principal engineer {} into a knowledge base.",
+                role
+            )),
             max_tokens: Some(400),
             temperature: Some(0.3),
         };

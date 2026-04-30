@@ -15,7 +15,9 @@ Read-optimized views are derived from the event log:
 - **Project/Session/Turn Projections**: Current state of active and historic sessions.
 - **Memory Projection**: Pinned or synthesized knowledge.
 - **FTS5 Projection**: Full-text search index for sub-second lexical recall.
-- **Graph Projection**: LadybugDB-backed property graph for multi-hop retrieval (optional).
+- **Graph Projection**: Dual-backend property graph for multi-hop retrieval.
+  - **Default Backend**: Deterministic in-memory projection used for routine Windows verification and schema/projector tests.
+  - **Ladybug Backend**: Opt-in native C++ backend (LadybugDB) for high-performance multi-hop traversal (requires `ladybug` feature).
 
 ### 2.3 Capture Core (`ai-brains-capture`)
 A pure logic layer that handles incoming requests (from CLI or hooks) and converts them into normalized events.
@@ -37,7 +39,7 @@ Aggregates data from multiple projections to serve high-level queries like `pref
 ### 2.6 Brain (`ai-brains-brain`)
 The "Nightly" intelligence worker that operates on background tasks:
 - **Summarization**: Compresses session turns into session summaries.
-- **RAPTOR**: Hierarchical clustering of memories for long-term knowledge retention.
+- **RAPTOR**: Hierarchical clustering of memories (Level 0->1 and Level 1->2) for long-term knowledge retention.
 - **CRAG**: Corrective Retrieval Augmented Generation to verify factual accuracy.
 
 ## 3. Data Flow
