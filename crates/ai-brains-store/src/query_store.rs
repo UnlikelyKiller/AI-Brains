@@ -9,7 +9,7 @@ impl QueryStore for VaultConnection {
         let conn = self.lock()?;
         let mut stmt = conn.prepare(
             "SELECT session_id FROM session_projection 
-             WHERE status = 'completed' AND summary_memory_id IS NULL"
+             WHERE status = 'completed' AND summary_memory_id IS NULL",
         )?;
         let rows = stmt.query_map([], |row| row.get(0))?;
         let mut results = Vec::new();
@@ -21,17 +21,17 @@ impl QueryStore for VaultConnection {
 
     fn get_session_turns(&self, session_id: &str) -> Result<Vec<(String, String)>> {
         let conn = self.lock()?;
-        
+
         // Update last_accessed_at
         conn.execute(
             "UPDATE turn_projection SET last_accessed_at = ? WHERE session_id = ?",
-            [chrono::Utc::now().to_rfc3339(), session_id.to_string()]
+            [chrono::Utc::now().to_rfc3339(), session_id.to_string()],
         )?;
 
         let mut stmt = conn.prepare(
             "SELECT role, content FROM turn_projection 
              WHERE session_id = ? 
-             ORDER BY occurred_at ASC"
+             ORDER BY occurred_at ASC",
         )?;
         let rows = stmt.query_map([session_id], |row| Ok((row.get(0)?, row.get(1)?)))?;
         let mut results = Vec::new();
@@ -48,7 +48,7 @@ impl QueryStore for VaultConnection {
              FROM memory_fts f
              JOIN memory_projection p ON f.memory_id = p.memory_id
              WHERE f.content MATCH ? AND p.status != 'forgotten'
-             LIMIT ?"
+             LIMIT ?",
         )?;
         let rows = stmt.query_map([query, &limit.to_string()], |row| {
             let id_str: String = row.get(0)?;
@@ -58,7 +58,8 @@ impl QueryStore for VaultConnection {
         let mut results = Vec::new();
         for row in rows {
             let (id_str, content) = row?;
-            let id = MemoryId::from_str(&id_str).map_err(|e| crate::StoreError::EventReadFailed(e.to_string()))?;
+            let id = MemoryId::from_str(&id_str)
+                .map_err(|e| crate::StoreError::EventReadFailed(e.to_string()))?;
             results.push((id, content));
         }
         Ok(results)
@@ -68,7 +69,7 @@ impl QueryStore for VaultConnection {
         let conn = self.lock()?;
         let mut stmt = conn.prepare(
             "SELECT memory_id, content FROM memory_projection 
-             WHERE level = ? AND status = 'pinned'"
+             WHERE level = ? AND status = 'pinned'",
         )?;
         let rows = stmt.query_map([level], |row| {
             let id_str: String = row.get(0)?;
@@ -78,7 +79,8 @@ impl QueryStore for VaultConnection {
         let mut results = Vec::new();
         for row in rows {
             let (id_str, content) = row?;
-            let id = MemoryId::from_str(&id_str).map_err(|e| crate::StoreError::EventReadFailed(e.to_string()))?;
+            let id = MemoryId::from_str(&id_str)
+                .map_err(|e| crate::StoreError::EventReadFailed(e.to_string()))?;
             results.push((id, content));
         }
         Ok(results)
@@ -88,7 +90,7 @@ impl QueryStore for VaultConnection {
         let conn = self.lock()?;
         let count = conn.execute(
             "DELETE FROM turn_projection WHERE last_accessed_at < ?",
-            [cutoff.to_rfc3339()]
+            [cutoff.to_rfc3339()],
         )?;
         Ok(count)
     }
@@ -97,7 +99,11 @@ impl QueryStore for VaultConnection {
         let conn = self.lock()?;
         conn.execute(
             "UPDATE memory_projection SET status = ?, updated_at = ? WHERE memory_id = ?",
-            [status, &chrono::Utc::now().to_rfc3339(), &memory_id.to_string()]
+            [
+                status,
+                &chrono::Utc::now().to_rfc3339(),
+                &memory_id.to_string(),
+            ],
         )?;
         Ok(())
     }

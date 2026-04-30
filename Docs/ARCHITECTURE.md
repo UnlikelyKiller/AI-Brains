@@ -56,7 +56,21 @@ The "Nightly" intelligence worker that operates on background tasks:
 3. **Filtering**: Apply privacy filters (e.g., exclude `Sealed` or `NeverInject`).
 4. **Synthesis**: Format results as Markdown or JSON.
 
-## 4. Portability and Degradation
+## 4. Configuration and Scale
+
+### 4.1 Hierarchical Configuration
+The system uses a 3-layer resolution strategy:
+1. **Environment Variables**: Primary overrides.
+2. **Local `.env`**: Repo-specific IDs (Project, Session).
+3. **Global `.env`**: User-wide defaults (`~/.ai-brains/.env`) for storage paths and model endpoints.
+
+### 4.2 Cross-Agent Synthesis (Phase 15)
+AI-Brains implements an **Aggregated Learnings Service** that identifies technical patterns across isolated agents. By analyzing `SessionSummaryCreated` events from multiple projects, the system promotes project-specific insights into a global knowledge base.
+
+### 4.3 Retrieval Briefing Index
+To optimize for long-context LLMs, the retrieval layer generates a **Briefing Index** (Topical Pointer) before the main memory payload. This allows the AI to "choose" its focus based on an indexed summary of available history.
+
+## 5. Portability and Degradation
 AI-Brains is designed to run in environments with varying levels of service:
 - **Minimum**: SQLite + Lexical Search (Works everywhere).
 - **Hardened**: SQLCipher (Full encryption).

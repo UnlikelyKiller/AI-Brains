@@ -3,7 +3,28 @@ use crate::{
     ModelProvider, Result,
 };
 use async_trait::async_trait;
-use serde_json::json;
+use serde::Serialize;
+
+#[derive(Serialize)]
+struct ChatMessage<'a> {
+    role: &'a str,
+    content: &'a str,
+}
+
+#[derive(Serialize)]
+struct LlamaCompletionRequest<'a> {
+    model: &'a str,
+    messages: Vec<ChatMessage<'a>>,
+    max_tokens: Option<u32>,
+    temperature: Option<f32>,
+    stream: bool,
+}
+
+#[derive(Serialize)]
+struct LlamaEmbeddingRequest<'a> {
+    model: &'a str,
+    input: &'a str,
+}
 
 pub struct LlamaCppProvider {
     endpoint: String,
@@ -21,22 +42,26 @@ impl ModelProvider for LlamaCppProvider {
     async fn complete(&self, request: CompletionRequest) -> Result<CompletionResponse> {
         let client = reqwest::Client::new();
         // OpenAI compatible chat/completions
-        let body = json!({
-            "model": self.model,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": request.system_prompt.unwrap_or_else(|| "You are a helpful assistant.".to_string())
+        let system_prompt = request
+            .system_prompt
+            .as_deref()
+            .unwrap_or("You are a helpful assistant.");
+        let body = LlamaCompletionRequest {
+            model: &self.model,
+            messages: vec![
+                ChatMessage {
+                    role: "system",
+                    content: system_prompt,
                 },
-                {
-                    "role": "user",
-                    "content": request.prompt
-                }
+                ChatMessage {
+                    role: "user",
+                    content: &request.prompt,
+                },
             ],
-            "max_tokens": request.max_tokens,
-            "temperature": request.temperature,
-            "stream": false
-        });
+            max_tokens: request.max_tokens,
+            temperature: request.temperature,
+            stream: false,
+        };
 
         let res = client
             .post(format!("{}/v1/chat/completions", self.endpoint))
@@ -58,10 +83,12 @@ impl ModelProvider for LlamaCppProvider {
             .json()
             .await
             .map_err(|e| ModelError::Provider(e.to_string()))?;
-            
+
         let text = json["choices"][0]["message"]["content"]
             .as_str()
-            .ok_or_else(|| ModelError::Provider("Missing choices[0].message.content field".to_string()))?
+            .ok_or_else(|| {
+                ModelError::Provider("Missing choices[0].message.content field".to_string())
+            })?
             .to_string();
 
         Ok(CompletionResponse {
@@ -73,10 +100,10 @@ impl ModelProvider for LlamaCppProvider {
     async fn embed(&self, request: EmbeddingRequest) -> Result<EmbeddingResponse> {
         let client = reqwest::Client::new();
         // OpenAI compatible embeddings
-        let body = json!({
-            "model": self.model,
-            "input": request.text,
-        });
+        let body = LlamaEmbeddingRequest {
+            model: &self.model,
+            input: &request.text,
+        };
 
         let res = client
             .post(format!("{}/v1/embeddings", self.endpoint))
@@ -98,7 +125,7 @@ impl ModelProvider for LlamaCppProvider {
             .json()
             .await
             .map_err(|e| ModelError::Provider(e.to_string()))?;
-            
+
         let vector = json["data"][0]["embedding"]
             .as_array()
             .ok_or_else(|| ModelError::Provider("Missing data[0].embedding field".to_string()))?

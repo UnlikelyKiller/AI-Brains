@@ -26,7 +26,7 @@ pub fn store_with_memory(
     let key = DataKey::generate();
     let sql_key = ai_brains_crypto::SqlCipherKey::from_data_key(&key);
 
-    let mut conn = VaultConnection::open(&db_path, &sql_key)?;
+    let conn = VaultConnection::open(&db_path, &sql_key)?;
     conn.migrate()?;
     let store = SqliteEventStore::new(conn);
 
@@ -47,7 +47,9 @@ pub fn store_with_memory(
     Ok(store)
 }
 
-pub fn append_active_session(store: &SqliteEventStore) -> Result<String, Box<dyn std::error::Error>> {
+pub fn append_active_session(
+    store: &SqliteEventStore,
+) -> Result<String, Box<dyn std::error::Error>> {
     let session_id = ai_brains_core::ids::SessionId::new();
     let project_id = ai_brains_core::ids::ProjectId::new();
     let project_payload = Payload::ProjectRegistered(ProjectRegisteredPayload {

@@ -38,7 +38,7 @@ impl Projection for TurnProjection {
         let memory_id = ai_brains_core::ids::MemoryId::new();
         let privacy = serde_json::to_string(&envelope.privacy)
             .map_err(|e| StoreError::EventReadFailed(e.to_string()))?;
-            
+
         tx.execute(
             "INSERT INTO memory_projection (memory_id, content, privacy, status, level, created_at, updated_at)
              VALUES (?, ?, ?, ?, ?, ?, ?)",

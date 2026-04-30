@@ -1,8 +1,10 @@
+#![allow(clippy::disallowed_methods)]
+
 use ai_brains_brain::NightlyService;
 use ai_brains_core::ids::{ProjectId, SessionId};
 use ai_brains_crypto::SqlCipherKey;
 use ai_brains_events::{
-    Envelope, Payload, SessionCompletedPayload, SessionStartedPayload, UserPromptRecordedPayload,
+    Payload, SessionCompletedPayload, SessionStartedPayload, UserPromptRecordedPayload,
 };
 use ai_brains_models::mock::MockProvider;
 use ai_brains_store::connection::VaultConnection;
@@ -98,7 +100,12 @@ async fn test_nightly_summarizes_session() -> Result<(), Box<dyn std::error::Err
         },
     ]));
 
-    let nightly = NightlyService::new(vault.clone(), event_store.clone(), mock_provider);
+    let nightly = NightlyService::new(
+        vault.clone(),
+        event_store.clone(),
+        mock_provider.clone(),
+        mock_provider,
+    );
     let summarized_count = nightly.run_nightly().await?;
 
     assert_eq!(summarized_count, 1);

@@ -47,10 +47,19 @@ ai-brains --vault-path ./vault.db recall "authentication logic" --limit 5
 ```
 
 ### Generating Preflight Context
+### Project Setup
+Before starting work in a new repository, initialize the local environment:
+```powershell
+ai-brains context
+```
+This command generates a deterministic `PROJECT_ID` based on your directory and a fresh `SESSION_ID`, storing them in a local `.env` file.
+
+### Context Generation (Preflight)
 Gather current session state and pinned memories for an LLM prompt.
 ```powershell
-ai-brains --vault-path ./vault.db preflight --max-words 1500
+ai-brains preflight --max-words 1500
 ```
+*Note: The output includes a **Briefing Index** (table of contents) followed by the detailed memories, optimized for AI token efficiency.*
 
 ## 4. Background Intelligence
 

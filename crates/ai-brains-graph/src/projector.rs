@@ -1,5 +1,5 @@
-use crate::ladybug::LadybugVault;
 use crate::errors::{GraphError, Result};
+use crate::ladybug::LadybugVault;
 use ai_brains_events::{Envelope, Payload};
 use lbug::Value;
 use std::collections::HashMap;
@@ -15,7 +15,7 @@ impl<'a> GraphProjector<'a> {
 
     pub fn apply(&self, envelope: &Envelope) -> Result<()> {
         let conn = self.vault.connection()?;
-        
+
         match &envelope.payload {
             Payload::ProjectRegistered(p) => {
                 let mut params = HashMap::new();
@@ -34,7 +34,10 @@ impl<'a> GraphProjector<'a> {
                     "started_at".to_string(),
                     Value::String(envelope.occurred_at.to_string()),
                 );
-                params.insert("project_id".to_string(), Value::String(s.project_id.to_string()));
+                params.insert(
+                    "project_id".to_string(),
+                    Value::String(s.project_id.to_string()),
+                );
                 params.insert("harness".to_string(), Value::String("claude".to_string())); // Default for now
                 conn.execute(
                     "MERGE (s:Session {id: $id}) \
@@ -56,7 +59,10 @@ impl<'a> GraphProjector<'a> {
 
                 let mut params = HashMap::new();
                 params.insert("id".to_string(), Value::String(turn_id));
-                params.insert("session_id".to_string(), Value::String(p.session_id.to_string()));
+                params.insert(
+                    "session_id".to_string(),
+                    Value::String(p.session_id.to_string()),
+                );
                 conn.execute(
                     "MERGE (t:Turn {id: $id}) \
                      ON CREATE SET t.role = 'user' \
@@ -77,7 +83,10 @@ impl<'a> GraphProjector<'a> {
 
                 let mut params = HashMap::new();
                 params.insert("id".to_string(), Value::String(turn_id));
-                params.insert("session_id".to_string(), Value::String(p.session_id.to_string()));
+                params.insert(
+                    "session_id".to_string(),
+                    Value::String(p.session_id.to_string()),
+                );
                 conn.execute(
                     "MERGE (t:Turn {id: $id}) \
                      ON CREATE SET t.role = 'assistant' \
@@ -92,8 +101,11 @@ impl<'a> GraphProjector<'a> {
                 let mut params = HashMap::new();
                 params.insert("id".to_string(), Value::String(p.memory_id.to_string()));
                 params.insert("kind".to_string(), Value::String("pinned".to_string()));
-                conn.execute("MERGE (m:Memory {id: $id}) ON CREATE SET m.kind = $kind, m.level = 0", params)
-                    .map_err(|e| GraphError::ProjectionError(e.to_string()))?;
+                conn.execute(
+                    "MERGE (m:Memory {id: $id}) ON CREATE SET m.kind = $kind, m.level = 0",
+                    params,
+                )
+                .map_err(|e| GraphError::ProjectionError(e.to_string()))?;
             }
             Payload::SessionSummaryCreated(p) => {
                 let mut params = HashMap::new();
@@ -131,7 +143,10 @@ impl<'a> GraphProjector<'a> {
             Payload::ConflictDetected(p) => {
                 let mut params = HashMap::new();
                 params.insert("id".to_string(), Value::String(p.conflict_id.to_string()));
-                params.insert("explanation".to_string(), Value::String(p.explanation.clone()));
+                params.insert(
+                    "explanation".to_string(),
+                    Value::String(p.explanation.clone()),
+                );
                 conn.execute(
                     "MERGE (c:Conflict {id: $id}) ON CREATE SET c.explanation = $explanation",
                     params,
@@ -141,7 +156,10 @@ impl<'a> GraphProjector<'a> {
                 for memory_id in &p.contradicted_memory_ids {
                     let mut rel_params = HashMap::new();
                     rel_params.insert("id".to_string(), Value::String(p.conflict_id.to_string()));
-                    rel_params.insert("memory_id".to_string(), Value::String(memory_id.to_string()));
+                    rel_params.insert(
+                        "memory_id".to_string(),
+                        Value::String(memory_id.to_string()),
+                    );
                     conn.execute(
                         "MATCH (c:Conflict {id: $id}), (m:Memory {id: $memory_id}) \
                          MERGE (c)-[:CONFLICTS_WITH]->(m)",
@@ -163,7 +181,10 @@ impl<'a> GraphProjector<'a> {
                 for session_id in &p.source_session_ids {
                     let mut rel_params = HashMap::new();
                     rel_params.insert("id".to_string(), Value::String(p.recipe_id.to_string()));
-                    rel_params.insert("session_id".to_string(), Value::String(session_id.to_string()));
+                    rel_params.insert(
+                        "session_id".to_string(),
+                        Value::String(session_id.to_string()),
+                    );
                     conn.execute(
                         "MATCH (s:Session {id: $session_id}), (r:Recipe {id: $id}) \
                          MERGE (s)-[:PART_OF_RECIPE]->(r)",
@@ -175,11 +196,8 @@ impl<'a> GraphProjector<'a> {
             Payload::MemoryForgotten(p) => {
                 let mut params = HashMap::new();
                 params.insert("id".to_string(), Value::String(p.memory_id.to_string()));
-                conn.execute(
-                    "MATCH (m:Memory {id: $id}) SET m.forgotten = true",
-                    params,
-                )
-                .map_err(|e| GraphError::ProjectionError(e.to_string()))?;
+                conn.execute("MATCH (m:Memory {id: $id}) SET m.forgotten = true", params)
+                    .map_err(|e| GraphError::ProjectionError(e.to_string()))?;
             }
             _ => {}
         }

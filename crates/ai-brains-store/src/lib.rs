@@ -6,9 +6,9 @@ pub mod fts;
 pub mod migrations;
 pub mod pragmas;
 pub mod projections;
+pub mod query_store;
 pub mod replay;
 pub mod transaction;
-pub mod query_store;
 
 pub use connection::VaultConnection;
 pub use errors::{Result, StoreError};

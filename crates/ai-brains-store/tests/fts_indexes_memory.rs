@@ -20,10 +20,10 @@ fn test_fts_indexes_memory() {
     let key = DataKey::generate();
     let sql_key = ai_brains_crypto::SqlCipherKey::from_data_key(&key);
 
-    let mut conn = VaultConnection::open(db_path, &sql_key).unwrap();
+    let conn = VaultConnection::open(db_path, &sql_key).unwrap();
     conn.migrate().unwrap();
 
-    let mut store = SqliteEventStore::new(conn);
+    let store = SqliteEventStore::new(conn);
 
     #[allow(unused_variables)]
     let project_id = ProjectId::new();
@@ -45,7 +45,9 @@ fn test_fts_indexes_memory() {
     .build(payload)
     .unwrap();
 
-    store.append_event(&envelope).expect("Failed to append event");
+    store
+        .append_event(&envelope)
+        .expect("Failed to append event");
 
     // Search
     let conn_guard = store.connection().lock().unwrap();

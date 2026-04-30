@@ -1,10 +1,10 @@
-# Track T21 — Model Providers
+# Track T21 - Model Providers
 
 ## Owner
 architecture-planner
 
 ## Status
-In Progress
+Implemented / Verification and Provenance Reconciliation Pending
 
 ## Objective
 Implement a provider-agnostic model abstraction with initial support for local Ollama and a mock for testing.
@@ -45,12 +45,12 @@ Implement a provider-agnostic model abstraction with initial support for local O
 - `tests/registry_respects_privacy_gate.rs`
 
 ## Implementation Steps
-1. [ ] Scaffold `ai-brains-models` crate and add to workspace.
-2. [ ] Define core traits and DTOs in `lib.rs`.
-3. [ ] Implement `ollama.rs` (local only).
-4. [ ] Implement `registry.rs` for provider selection.
-5. [ ] Implement `mock.rs` for tests.
-6. [ ] Verification and CI gate.
+1. [x] Scaffold `ai-brains-models` crate and add to workspace.
+2. [x] Define core traits and DTOs in `lib.rs`.
+3. [x] Implement `ollama.rs` (local only).
+4. [x] Implement `registry.rs` for provider selection.
+5. [x] Implement `mock.rs` for tests.
+6. [x] Verification and CI gate reconciliation for degraded Windows workspace.
 
 ## Failure Modes To Handle
 - Provider offline (actionable error).
@@ -67,4 +67,8 @@ Implement a provider-agnostic model abstraction with initial support for local O
 - CI pass with clippy and nextest.
 
 ## Handoff Notes
-- Phase 9 start.
+- `ModelProvider`, `OllamaProvider`, `MockProvider`, `ProviderRegistry`, and local llama.cpp routing artifacts are present.
+- Focused tests exist for mocked Ollama completion and privacy-aware registry selection.
+- Degraded Windows verification passes with `cargo clippy --workspace --all-targets --exclude ai-brains-graph -- -D warnings` and `cargo test --workspace --exclude ai-brains-graph`.
+- Full all-target verification remains blocked by the graph crate's documented LadybugDB/MSVC debug linker issue.
+- ChangeGuard still reports a stale pending transaction for `crates/ai-brains-models`; provenance must be reconciled before this track is closed.

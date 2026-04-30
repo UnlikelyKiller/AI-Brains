@@ -37,7 +37,7 @@ impl MemorySynthesizer {
         // Group by 5 memories each or use the LLM to find groups.
         // Real RAPTOR uses GMM on embeddings.
         let clusters = self.cluster_memories(&level_0_memories).await?;
-        
+
         let mut count = 0;
         for cluster in clusters {
             if cluster.len() < 2 {
@@ -46,17 +46,20 @@ impl MemorySynthesizer {
 
             // 3. Summarize the cluster
             let synthesis = self.synthesize_cluster(&cluster).await?;
-            
+
             // 4. CRAG: Verify the synthesis
             if !self.verify_synthesis(&cluster, &synthesis).await? {
-                tracing::warn!("Synthesized memory was rejected by CRAG verification: {}", synthesis);
+                tracing::warn!(
+                    "Synthesized memory was rejected by CRAG verification: {}",
+                    synthesis
+                );
                 continue;
             }
 
             // 5. Emit event
             let memory_id = MemoryId::new();
             let source_memory_ids = cluster.iter().map(|(id, _)| *id).collect();
-            
+
             let event = ai_brains_events::constructors::EventBuilder::new(
                 ai_brains_events::AggregateType::Memory,
                 memory_id.as_uuid(),
@@ -78,7 +81,10 @@ impl MemorySynthesizer {
         Ok(count)
     }
 
-    async fn cluster_memories(&self, memories: &[(MemoryId, String)]) -> Result<Vec<Vec<(MemoryId, String)>>, Box<dyn std::error::Error>> {
+    async fn cluster_memories(
+        &self,
+        memories: &[(MemoryId, String)],
+    ) -> Result<Vec<Vec<(MemoryId, String)>>, Box<dyn std::error::Error>> {
         // Heuristic: Group by 5 for now.
         // TODO: Use embeddings and GMM/K-Means.
         let mut clusters = Vec::new();
@@ -88,12 +94,15 @@ impl MemorySynthesizer {
         Ok(clusters)
     }
 
-    async fn synthesize_cluster(&self, cluster: &[(MemoryId, String)]) -> Result<String, Box<dyn std::error::Error>> {
+    async fn synthesize_cluster(
+        &self,
+        cluster: &[(MemoryId, String)],
+    ) -> Result<String, Box<dyn std::error::Error>> {
         let mut contents = String::new();
         for (_, content) in cluster {
             contents.push_str("- ");
             contents.push_str(content);
-            contents.push_str("\n");
+            contents.push('\n');
         }
 
         let prompt = format!(
@@ -114,12 +123,16 @@ impl MemorySynthesizer {
         Ok(response.text)
     }
 
-    async fn verify_synthesis(&self, cluster: &[(MemoryId, String)], synthesis: &str) -> Result<bool, Box<dyn std::error::Error>> {
+    async fn verify_synthesis(
+        &self,
+        cluster: &[(MemoryId, String)],
+        synthesis: &str,
+    ) -> Result<bool, Box<dyn std::error::Error>> {
         let mut sources = String::new();
         for (_, content) in cluster {
             sources.push_str("- ");
             sources.push_str(content);
-            sources.push_str("\n");
+            sources.push('\n');
         }
 
         let prompt = format!(

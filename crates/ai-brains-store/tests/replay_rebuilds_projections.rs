@@ -19,7 +19,7 @@ fn test_replay_rebuilds_projections() {
     let key = DataKey::generate();
     let sql_key = ai_brains_crypto::SqlCipherKey::from_data_key(&key);
 
-    let mut conn = VaultConnection::open(db_path, &sql_key).unwrap();
+    let conn = VaultConnection::open(db_path, &sql_key).unwrap();
     conn.migrate().unwrap();
 
     let mut store = SqliteEventStore::new(conn);
@@ -43,7 +43,9 @@ fn test_replay_rebuilds_projections() {
     .build(payload)
     .unwrap();
 
-    store.append_event(&envelope).expect("Failed to append event");
+    store
+        .append_event(&envelope)
+        .expect("Failed to append event");
 
     // Manually clear projection
     store

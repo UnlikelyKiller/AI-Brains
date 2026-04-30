@@ -28,10 +28,12 @@ pub fn setup_store() -> Result<EventStore, Box<dyn std::error::Error>> {
     Ok(EventStore::new(conn))
 }
 
-pub fn append_session(store: &mut EventStore) -> Result<(String, String), Box<dyn std::error::Error>> {
+pub fn append_session(
+    store: &mut EventStore,
+) -> Result<(String, String), Box<dyn std::error::Error>> {
     let session_id = ai_brains_core::ids::SessionId::new();
     let project_id = ai_brains_core::ids::ProjectId::new();
-    
+
     let project_payload = Payload::ProjectRegistered(ProjectRegisteredPayload {
         project_id,
         name: "test-project".to_string(),
@@ -59,6 +61,6 @@ pub fn append_session(store: &mut EventStore) -> Result<(String, String), Box<dy
     )
     .build(payload)?;
     store.append(&envelope)?;
-    
+
     Ok((session_id.to_string(), project_id.to_string()))
 }

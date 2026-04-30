@@ -11,7 +11,7 @@ fn preflight_under_1500_words() -> Result<(), Box<dyn std::error::Error>> {
         .join(" ");
     let store = common::store_with_memory(&long_text, Privacy::CloudOk)?;
 
-    let preflight = build_preflight(store.connection(), None, 1500)?;
+    let preflight = build_preflight(store.connection(), None, 1500, None)?;
     assert!(preflight.word_count <= 1500);
     Ok(())
 }
