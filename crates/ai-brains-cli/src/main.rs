@@ -92,6 +92,21 @@ enum Commands {
         #[arg(long, default_value = "LocalOnly")]
         privacy: String,
     },
+    /// Manage repository safety signals
+    Safety {
+        #[command(subcommand)]
+        command: SafetyCommands,
+    },
+}
+
+#[derive(Subcommand)]
+enum SafetyCommands {
+    /// Synchronize ChangeGuard hotspots into the AI-Brains vault
+    Sync {
+        /// Limit the number of hotspots to ingest
+        #[arg(short, long, default_value_t = 5)]
+        limit: usize,
+    },
 }
 
 fn main() {
@@ -143,6 +158,9 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             role,
             privacy,
         } => run_pin(&cli, content.clone(), role.clone(), privacy.clone()),
+        Commands::Safety { command } => match command {
+            SafetyCommands::Sync { limit } => run_safety_sync(&cli, *limit),
+        },
     }
 }
 
@@ -530,18 +548,17 @@ fn run_pin(
     use ai_brains_core::privacy::Privacy;
 
     let project_id = std::env::var("AI_BRAINS_PROJECT_ID")
-        .map(|s| ProjectId::from_str(&s).unwrap())
-        .ok()
-        .ok_or("AI_BRAINS_PROJECT_ID not set. Run 'ai-brains context' first.")?;
+        .map_err(|_| "AI_BRAINS_PROJECT_ID not set. Run 'ai-brains context' first.")?
+        .parse::<ProjectId>()?;
 
     let session_id = std::env::var("AI_BRAINS_SESSION_ID")
-        .map(|s| SessionId::from_str(&s).unwrap())
-        .ok()
-        .ok_or("AI_BRAINS_SESSION_ID not set. Run 'ai-brains context' first.")?;
+        .map_err(|_| "AI_BRAINS_SESSION_ID not set. Run 'ai-brains context' first.")?
+        .parse::<SessionId>()?;
 
     let harness_id = std::env::var("AI_BRAINS_HARNESS_ID")
-        .map(|s| HarnessId::from_str(&s).unwrap())
-        .unwrap_or_else(|_| HarnessId::new());
+        .ok()
+        .and_then(|s| s.parse::<HarnessId>().ok())
+        .unwrap_or_default();
 
     let privacy = match privacy_str.to_lowercase().as_str() {
         "cloudok" => Privacy::CloudOk,
@@ -582,6 +599,42 @@ fn run_pin(
     }
 
     println!("Memory successfully pinned to vault.");
+    Ok(())
+}
+
+fn run_safety_sync(cli: &Cli, limit: usize) -> Result<(), Box<dyn std::error::Error>> {
+    println!("Scanning for ChangeGuard Hotspots...");
+
+    let output = std::process::Command::new("changeguard")
+        .args(["hotspots", "--limit", &limit.to_string()])
+        .output()?;
+
+    if !output.status.success() {
+        return Err(
+            "ChangeGuard scan failed. Ensure ChangeGuard is installed and initialized.".into(),
+        );
+    }
+
+    let hotspots = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if hotspots.is_empty() {
+        println!("No hotspots identified. Safety layer is healthy.");
+        return Ok(());
+    }
+
+    println!("Ingesting hotspots into AI-Brains vault...");
+
+    let content = format!(
+        "HOTSPOT: Brittle files identified by ChangeGuard:\n\n{}",
+        hotspots
+    );
+    run_pin(
+        cli,
+        content,
+        "assistant".to_string(),
+        "LocalOnly".to_string(),
+    )?;
+
+    println!("Safety synchronization complete.");
     Ok(())
 }
 

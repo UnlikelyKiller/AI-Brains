@@ -57,7 +57,7 @@ pub fn build_preflight(
     // --- Onboarding & Safety Section (Max 15% of budget) ---
     let onboarding_budget = (max_words * 15) / 100;
     let mut safety_lines = Vec::new();
-    
+
     // Look for INVARIANTS and CONSTRAINTS specifically for the safety section
     let mut safety_stmt = conn.prepare(
         "SELECT content FROM memory_projection 
@@ -72,7 +72,10 @@ pub fn build_preflight(
     }
 
     if !safety_lines.is_empty() {
-        let safety_text = format!("--- Repository Bearings & Safety ---\n{}", safety_lines.join("\n\n"));
+        let safety_text = format!(
+            "--- Repository Bearings & Safety ---\n{}",
+            safety_lines.join("\n\n")
+        );
         sections.push(trim_to_word_budget(&safety_text, onboarding_budget));
     }
 
@@ -101,7 +104,7 @@ pub fn build_preflight(
             index_lines.push(format!("{}. {}", i + 1, summary));
         }
         let index_text = index_lines.join("\n");
-        
+
         // 2. Build the detailed section (only the most recent memory)
         let mut detailed_text = String::new();
         if let Some(most_recent) = collected.first() {
@@ -114,7 +117,7 @@ pub fn build_preflight(
         // 3. Assemble with budget awareness
         let remaining_budget = max_words.saturating_sub(word_count(&sections.join("\n\n")));
         let full_text = format!("{}\n\n{}", index_text, detailed_text);
-        
+
         if word_count(&full_text) <= remaining_budget {
             sections.push(full_text);
         } else {

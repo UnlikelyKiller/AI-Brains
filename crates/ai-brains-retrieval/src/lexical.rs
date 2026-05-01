@@ -21,8 +21,9 @@ pub fn lexical_search(
          FROM memory_fts fts
          JOIN memory_projection mp ON mp.rowid = fts.rowid
          LEFT JOIN session_projection sp ON mp.session_id = sp.session_id
-         WHERE memory_fts MATCH ? AND mp.status = 'pinned'".to_string();
-    
+         WHERE memory_fts MATCH ? AND mp.status = 'pinned'"
+        .to_string();
+
     let mut params_vec: Vec<rusqlite::types::Value> = vec![query.to_string().into()];
 
     if let Some(sid) = session_id {

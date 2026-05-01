@@ -143,7 +143,7 @@ impl NightlyService {
              Conversation:\n{}",
             conversation
         );
- 
+
         let request = CompletionRequest {
             prompt,
             system_prompt: Some(

@@ -166,19 +166,22 @@ impl MemorySynthesizer {
 
         let request = CompletionRequest {
             prompt,
-            system_prompt: Some("You are a strict technical auditor. You verify facts and reject hallucinations.".to_string()),
+            system_prompt: Some(
+                "You are a strict technical auditor. You verify facts and reject hallucinations."
+                    .to_string(),
+            ),
             max_tokens: Some(200),
             temperature: Some(0.0),
         };
 
         let response = self.model_provider.complete(request).await?;
         let text = response.text.to_uppercase();
-        
+
         if text.contains("UNSUPPORTED") {
             tracing::warn!("CRAG REJECTED: {}", response.text);
             return Ok(false);
         }
-        
+
         Ok(text.contains("SUPPORTED"))
     }
 }
