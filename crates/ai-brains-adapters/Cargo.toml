@@ -11,3 +11,4 @@ ai-brains-contracts = { path = "../ai-brains-contracts" }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+dirs = "6.0"

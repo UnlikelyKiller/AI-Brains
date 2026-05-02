@@ -12,6 +12,7 @@ ai-brains-store = { path = "../ai-brains-store" }
 ai-brains-graph = { path = "../ai-brains-graph", optional = true }
 rusqlite = "0.32"
 thiserror.workspace = true
+strip-ansi-escapes.workspace = true
 
 [features]
 default = []

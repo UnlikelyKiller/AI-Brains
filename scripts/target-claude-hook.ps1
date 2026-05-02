@@ -5,7 +5,7 @@
 $utf8NoBom = New-Object System.Text.UTF8Encoding $false
 $OutputEncoding = [Console]::InputEncoding = [Console]::OutputEncoding = $utf8NoBom
 
-$logPrefix = "[ai-brains-claude]"
+$logPrefix = '[ai-brains-claude]'
 
 function Write-Log($message) {
     [Console]::Error.WriteLine("$logPrefix $message")
@@ -38,9 +38,9 @@ function Get-TextFromContent($content) {
     if ($content -is [array]) {
         $textBlocks = @()
         foreach ($block in $content) {
-            if ($block.type -eq "text" -and $block.text) {
+            if ($block.type -eq 'text' -and $block.text) {
                 $textBlocks += $block.text
-            } elseif ($block.type -eq "output_text" -and $block.text) {
+            } elseif ($block.type -eq 'output_text' -and $block.text) {
                 $textBlocks += $block.text
             }
         }
@@ -60,7 +60,7 @@ function Get-AssistantMessagesFromTranscript($transcriptPath, $tail, $limit) {
     for ($i = $lines.Count - 1; $i -ge 0; $i--) {
         try {
             $entry = $lines[$i] | ConvertFrom-Json
-            $isAssistant = $entry.role -eq "assistant" -or $entry.type -eq "assistant"
+            $isAssistant = $entry.role -eq 'assistant' -or $entry.type -eq 'assistant'
             if (-not $isAssistant) { continue }
 
             $text = Get-TextFromContent $entry.content
@@ -76,23 +76,25 @@ function Get-AssistantMessagesFromTranscript($transcriptPath, $tail, $limit) {
 
 function De-Noise($content) {
     if (-not $content) { return $null }
-    
+
     $lines = $content -split "`r?`n"
-    $filteredLines = @()
+    $filteredLines = [System.Collections.ArrayList]::new()
     $inCodeBlock = $false
-    $currentBlock = @()
+    $currentBlock = [System.Collections.ArrayList]::new()
 
     foreach ($line in $lines) {
         if ($line -match '^```') {
             if ($inCodeBlock) {
                 if ($currentBlock.Count -le 10) {
-                    $filteredLines += "```"
-                    $filteredLines += $currentBlock
-                    $filteredLines += "```"
+                    $filteredLines.Add('```') | Out-Null
+                    foreach ($blockLine in $currentBlock) {
+                        $filteredLines.Add($blockLine) | Out-Null
+                    }
+                    $filteredLines.Add('```') | Out-Null
                 } else {
-                    $filteredLines += "```... [Long block stripped] ...```"
+                    $filteredLines.Add('```... [Long block stripped] ...```') | Out-Null
                 }
-                $currentBlock = @()
+                $currentBlock = [System.Collections.ArrayList]::new()
                 $inCodeBlock = $false
             } else {
                 $inCodeBlock = $true
@@ -101,9 +103,9 @@ function De-Noise($content) {
         }
 
         if ($inCodeBlock) {
-            $currentBlock += $line
+            $currentBlock.Add($line) | Out-Null
         } else {
-            $filteredLines += $line
+            $filteredLines.Add($line) | Out-Null
         }
     }
 
@@ -119,12 +121,12 @@ function Invoke-Ingest($rawContent, $inputJson, $projectDir, $label) {
     $content = De-Noise $rawContent
 
     if ($projectDir) {
-        $localScript = Join-Path $projectDir ".agents\skills\ai-brains\scripts\ingest.ps1"
+        $localScript = Join-Path $projectDir '.agents\skills\ai-brains\scripts\ingest.ps1'
         if (Test-Path -LiteralPath $localScript) {
             Write-Log "$label calling local ingest script"
             Push-Location $projectDir
             try {
-                & $localScript -Content $content -Role "assistant" | Out-Null
+                & $localScript -Content $content -Role 'assistant' | Out-Null
             } finally {
                 Pop-Location
             }
@@ -133,7 +135,7 @@ function Invoke-Ingest($rawContent, $inputJson, $projectDir, $label) {
     }
 
     Write-Log "$label falling back to direct CLI ingest"
-    $harnessId = if ($env:AI_BRAINS_HARNESS_ID) { $env:AI_BRAINS_HARNESS_ID } else { "claude-code" }
+    $harnessId = if ($env:AI_BRAINS_HARNESS_ID) { $env:AI_BRAINS_HARNESS_ID } else { 'claude-code' }
     $sessionId = if ($env:AI_BRAINS_SESSION_ID) { $env:AI_BRAINS_SESSION_ID } else { $inputJson.session_id }
 
     if (-not $env:AI_BRAINS_PROJECT_ID -or -not $sessionId) {
@@ -146,9 +148,9 @@ function Invoke-Ingest($rawContent, $inputJson, $projectDir, $label) {
         project_id = $env:AI_BRAINS_PROJECT_ID
         harness_id = $harnessId
         turn_id = [guid]::NewGuid().ToString()
-        role = "assistant"
+        role = 'assistant'
         content = $content
-        privacy = "LocalOnly"
+        privacy = 'LocalOnly'
     } | ConvertTo-Json -Compress
 
     $tempFile = [System.IO.Path]::GetTempFileName()
@@ -163,10 +165,10 @@ function Invoke-Ingest($rawContent, $inputJson, $projectDir, $label) {
 function Export-ClaudeEnv {
     if (-not $env:CLAUDE_ENV_FILE) { return }
 
-    $envLines = @()
-    if ($env:AI_BRAINS_PROJECT_ID) { $envLines += "export AI_BRAINS_PROJECT_ID=""$($env:AI_BRAINS_PROJECT_ID)""" }
-    if ($env:AI_BRAINS_SESSION_ID) { $envLines += "export AI_BRAINS_SESSION_ID=""$($env:AI_BRAINS_SESSION_ID)""" }
-    if ($env:AI_BRAINS_HARNESS_ID) { $envLines += "export AI_BRAINS_HARNESS_ID=""$($env:AI_BRAINS_HARNESS_ID)""" }
+    $envLines = [System.Collections.ArrayList]::new()
+    if ($env:AI_BRAINS_PROJECT_ID) { $envLines.Add("export AI_BRAINS_PROJECT_ID=`"$($env:AI_BRAINS_PROJECT_ID)`"") | Out-Null }
+    if ($env:AI_BRAINS_SESSION_ID) { $envLines.Add("export AI_BRAINS_SESSION_ID=`"$($env:AI_BRAINS_SESSION_ID)`"") | Out-Null }
+    if ($env:AI_BRAINS_HARNESS_ID) { $envLines.Add("export AI_BRAINS_HARNESS_ID=`"$($env:AI_BRAINS_HARNESS_ID)`"") | Out-Null }
 
     if ($envLines.Count -gt 0) {
         [System.IO.File]::AppendAllLines($env:CLAUDE_ENV_FILE, $envLines, $utf8NoBom)
@@ -174,7 +176,7 @@ function Export-ClaudeEnv {
 }
 
 function Invoke-Preflight {
-    Write-Log "Running preflight"
+    Write-Log 'Running preflight'
     $preflightRaw = ai-brains preflight --max-words 1500 2>$null
     if ($LASTEXITCODE -ne 0) {
         Write-Log "Preflight failed (exit $LASTEXITCODE)"
@@ -192,7 +194,7 @@ function Invoke-Preflight {
     Write-HookResponse @{
         continue = $true
         hookSpecificOutput = @{
-            hookEventName = "SessionStart"
+            hookEventName = 'SessionStart'
             additionalContext = $preflightText
         }
     }
@@ -211,25 +213,25 @@ $projectDir = $inputJson.cwd
 if (-not $projectDir) { $projectDir = $env:CLAUDE_PROJECT_DIR }
 if (-not $projectDir) { $projectDir = $PWD.Path }
 
-if ($projectDir) { Load-Env (Join-Path $projectDir ".env") }
-Load-Env (Join-Path $HOME ".ai-brains\.env")
+if ($projectDir) { Load-Env (Join-Path $projectDir '.env') }
+Load-Env (Join-Path $HOME '.ai-brains\.env')
 
 $event = $inputJson.hook_event_name
 Write-Log "Event: $event | CWD: $projectDir"
 
 switch ($event) {
-    "SessionStart" {
+    'SessionStart' {
         Invoke-Preflight
     }
 
-    "Stop" {
+    'Stop' {
         try {
             $messages = @(Get-AssistantMessagesFromTranscript $inputJson.transcript_path 50 1)
             if ($messages.Count -gt 0) {
-                Invoke-Ingest $messages[0] $inputJson $projectDir "Stop:"
-                Write-Log "Stop: ingest complete"
+                Invoke-Ingest $messages[0] $inputJson $projectDir 'Stop:'
+                Write-Log 'Stop: ingest complete'
             } else {
-                Write-Log "Stop: no transcript assistant content found"
+                Write-Log 'Stop: no transcript assistant content found'
             }
         } catch {
             Write-Log "Stop: ingest failed: $_"
@@ -238,14 +240,14 @@ switch ($event) {
         Write-HookResponse @{ continue = $true }
     }
 
-    "SessionEnd" {
+    'SessionEnd' {
         try {
             $messages = @(Get-AssistantMessagesFromTranscript $inputJson.transcript_path 100 1)
             if ($messages.Count -gt 0) {
-                Invoke-Ingest $messages[0] $inputJson $projectDir "SessionEnd:"
-                Write-Log "SessionEnd: ingest complete"
+                Invoke-Ingest $messages[0] $inputJson $projectDir 'SessionEnd:'
+                Write-Log 'SessionEnd: ingest complete'
             } else {
-                Write-Log "SessionEnd: no transcript assistant content found"
+                Write-Log 'SessionEnd: no transcript assistant content found'
             }
         } catch {
             Write-Log "SessionEnd: ingest failed: $_"
@@ -254,15 +256,16 @@ switch ($event) {
         Write-HookResponse @{ continue = $true }
     }
 
-    "PreCompact" {
+    'PreCompact' {
         try {
             $messages = @(Get-AssistantMessagesFromTranscript $inputJson.transcript_path 200 3)
             if ($messages.Count -gt 0) {
                 $combinedContent = $messages -join "`n---`n"
-                Invoke-Ingest $combinedContent $inputJson $projectDir "PreCompact:"
-                Write-Log "PreCompact: ingest complete ($($messages.Count) turns captured)"
+                Invoke-Ingest $combinedContent $inputJson $projectDir 'PreCompact:'
+                $msgCount = $messages.Count
+                Write-Log "PreCompact: ingest complete ($msgCount turns captured)"
             } else {
-                Write-Log "PreCompact: no transcript assistant content found"
+                Write-Log 'PreCompact: no transcript assistant content found'
             }
         } catch {
             Write-Log "PreCompact: ingest failed: $_"

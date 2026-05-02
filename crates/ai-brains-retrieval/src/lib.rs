@@ -1,3 +1,4 @@
+mod ansi;
 mod errors;
 mod lexical;
 mod preflight;
@@ -6,6 +7,7 @@ mod recall;
 mod sessions;
 mod word_budget;
 
+pub use ansi::strip_ansi;
 pub use errors::{Result, RetrievalError};
 pub use lexical::{lexical_search, RetrievalMemory};
 pub use preflight::{build_preflight, PreflightContext};

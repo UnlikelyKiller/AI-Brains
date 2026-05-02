@@ -13,7 +13,11 @@ mod opencode;
 mod wrapper;
 
 pub use adapter::{adapter_capability, AdapterKind};
-pub use antigravity::manual_import_instructions;
+pub use antigravity::{
+    antigravity_capability, discover_sessions, extract_turns, filter_recent_sessions,
+    manual_import_instructions, parse_overview_file, session_id_from_path, AntigravityStep,
+    AntigravityTurn,
+};
 pub use capability::{AdapterCapability, CapabilityLevel};
 pub use claude::parse_claude_stop_payload;
 pub use config_patch::apply_idempotent_patch;

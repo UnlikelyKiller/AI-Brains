@@ -1,3 +1,5 @@
+mod hotspot;
+
 use ai_brains_capture::{parse_ingest_request, CaptureContext, CaptureService};
 use ai_brains_contracts::ingest::IngestResponse;
 use ai_brains_contracts::preflight::PreflightContextResponse;
@@ -97,6 +99,12 @@ enum Commands {
         #[command(subcommand)]
         command: SafetyCommands,
     },
+    /// Import Antigravity conversation logs into the vault
+    AntigravityImport {
+        /// Only import sessions modified within the last N days
+        #[arg(short, long, default_value_t = 30)]
+        days: usize,
+    },
 }
 
 #[derive(Subcommand)]
@@ -161,6 +169,7 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Commands::Safety { command } => match command {
             SafetyCommands::Sync { limit } => run_safety_sync(&cli, *limit),
         },
+        Commands::AntigravityImport { days } => run_antigravity_import(&cli, *days),
     }
 }
 
@@ -444,6 +453,11 @@ fn run_nightly(
         ai_brains_models::llama_cpp::LlamaCppProvider::new(model_url, embedding_model),
     );
 
+    // Import Antigravity sessions before summarization so they get summarized too
+    if let Err(e) = run_antigravity_import(cli, 30) {
+        tracing::error!("Antigravity import failed: {}", e);
+    }
+
     let service = ai_brains_brain::NightlyService::new(
         query_store,
         event_store,
@@ -615,7 +629,13 @@ fn run_safety_sync(cli: &Cli, limit: usize) -> Result<(), Box<dyn std::error::Er
         );
     }
 
-    let hotspots = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    let raw_output = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if raw_output.is_empty() {
+        println!("No hotspots identified. Safety layer is healthy.");
+        return Ok(());
+    }
+
+    let hotspots = crate::hotspot::sanitize_and_condense(&raw_output);
     if hotspots.is_empty() {
         println!("No hotspots identified. Safety layer is healthy.");
         return Ok(());
@@ -635,6 +655,137 @@ fn run_safety_sync(cli: &Cli, limit: usize) -> Result<(), Box<dyn std::error::Er
     )?;
 
     println!("Safety synchronization complete.");
+    Ok(())
+}
+
+fn run_antigravity_import(cli: &Cli, days: usize) -> Result<(), Box<dyn std::error::Error>> {
+    use ai_brains_adapters::{
+        discover_sessions, extract_turns, filter_recent_sessions, parse_overview_file,
+        session_id_from_path,
+    };
+
+    println!("Scanning for Antigravity sessions...");
+
+    let all_sessions = discover_sessions()?;
+    if all_sessions.is_empty() {
+        println!("No Antigravity sessions found.");
+        return Ok(());
+    }
+
+    let recent_sessions = filter_recent_sessions(&all_sessions, days);
+    if recent_sessions.is_empty() {
+        println!(
+            "No recent Antigravity sessions found (within {} days).",
+            days
+        );
+        return Ok(());
+    }
+
+    println!("Found {} session(s) to import.", recent_sessions.len());
+
+    let conn = open_vault(cli)?;
+    let service = ai_brains_capture::CaptureService::new();
+
+    let mut total_turns = 0;
+    let mut sessions_imported = 0;
+
+    for overview_path in &recent_sessions {
+        let session_id_str = match session_id_from_path(overview_path) {
+            Some(id) => id,
+            None => {
+                eprintln!(
+                    "Warning: Could not extract session ID from {}",
+                    overview_path.display()
+                );
+                continue;
+            }
+        };
+
+        // Skip sessions that have already been imported (idempotent)
+        {
+            let conn_lock = conn.lock()?;
+            let mut stmt =
+                conn_lock.prepare("SELECT 1 FROM session_projection WHERE session_id = ?")?;
+            if stmt.exists(rusqlite::params![session_id_str])? {
+                println!(
+                    "Session {} already imported, skipping.",
+                    &session_id_str[..8]
+                );
+                continue;
+            }
+        }
+
+        let steps = match parse_overview_file(overview_path) {
+            Ok(s) => s,
+            Err(e) => {
+                eprintln!(
+                    "Warning: Failed to parse {}: {}",
+                    overview_path.display(),
+                    e
+                );
+                continue;
+            }
+        };
+
+        let turns = extract_turns(&steps);
+        if turns.is_empty() {
+            continue;
+        }
+
+        // Auto-create project if needed
+        let project_id = ai_brains_core::ids::ProjectId::new();
+        let session_id = ai_brains_core::ids::SessionId::from_uuid(
+            uuid::Uuid::parse_str(&session_id_str).unwrap_or_else(|_| uuid::Uuid::new_v4()),
+        );
+
+        // Start the session
+        let capture_context = ai_brains_capture::CaptureContext {
+            git_working_dir: std::env::current_dir().ok(),
+        };
+        let mut sink = struct_sink::StoreSink {
+            store: ai_brains_store::SqliteEventStore::new(conn.clone()),
+            last_error: None,
+        };
+
+        service.start_session(
+            ai_brains_capture::SessionStartCommand {
+                session_id,
+                project_id,
+                harness_id: ai_brains_core::ids::HarnessId::from_uuid(uuid::Uuid::new_v4()),
+                privacy: ai_brains_core::privacy::Privacy::LocalOnly,
+            },
+            capture_context.clone(),
+            &mut sink,
+        )?;
+
+        // Ingest each turn
+        for turn in &turns {
+            let request = ai_brains_contracts::ingest::IngestRequest {
+                session_id,
+                project_id,
+                harness_id: ai_brains_core::ids::HarnessId::from_uuid(uuid::Uuid::new_v4()),
+                turn_id: ai_brains_core::ids::TurnId::new(),
+                role: turn.role.clone(),
+                content: turn.content.clone(),
+                privacy: ai_brains_core::privacy::Privacy::LocalOnly,
+                thinking: None,
+            };
+            service.ingest_request(request, capture_context.clone(), &mut sink)?;
+            total_turns += 1;
+        }
+
+        sessions_imported += 1;
+        println!(
+            "Imported {} turns from session {}.",
+            turns.len(),
+            &session_id_str[..8]
+        );
+    }
+
+    println!(
+        "Antigravity import complete. Imported {} turn(s) from {} session(s).",
+        total_turns, sessions_imported
+    );
     Ok(())
 }
 

@@ -38,6 +38,8 @@
 | T29 | Relational Graph | **Completed** | Orchestrator | Migrate graph projection to SQLite (ADR-0009). |
 | T30 | Hardening Protocol | **Completed** | Orchestrator | Optimization, encoding fixes, and agentic protocol overhaul. |
 | T31 | Onboarding & Observability | **In Progress** | Orchestrator | Integrate 4-layer repo understanding (ADR-0010). |
+| T32 | Preflight ANSI Cleanup & Dedup | **Completed** | Orchestrator | Strip ANSI codes, deduplicate safety/index, condense hotspots. |
+| T33 | Antigravity Conversation Import | **Completed** | Orchestrator | Parse Antigravity logs, import turns into nightly, CLI subcommand. |
 
 ## Current Verification Snapshot
 - `cargo fmt`: passes.
