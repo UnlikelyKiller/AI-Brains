@@ -6,8 +6,9 @@
 - **CQRS Integrity**: Commands append events; queries read projections. DO NOT mix read/write logic in the same service or transaction.
 - **Capture Privacy**: DO NOT store hidden chain-of-thought, model reasoning, or raw tool logs. Capture ONLY the final assistant response and user prompt.
 - **Privacy Inheritance**: Derived memories (summaries, clusters) MUST inherit the strictest privacy flag from their source events.
-- **Rust Safety**: PROHIBITED use of `unwrap()`, `expect()`, or `panic()` in production code. Explicit error handling (`thiserror`, `anyhow`) is mandatory.
+- **Rust Safety**: PROHIBITED use of `unwrap()`, `expect()`, or `panic()` in production code. Explicit error handling (`thiserror`, `anyhow`) and `zeroize` for sensitive key material are mandatory.
 - **Provenance**: ALL architectural decisions and track implementations MUST be recorded in the `changeguard ledger`.
+- **No Repository Pollution**: AI-Brains MUST NOT write project-local files by default. Use global user storage (`$env:USERPROFILE\.ai-brains`) unless the user explicitly invokes a repo-write command.
 
 ## Technical Invariants
 - **Path Normalization**: Normalization for Windows drive-case, UNC prefixes, and WSL mappings is mandatory for all stored paths.
