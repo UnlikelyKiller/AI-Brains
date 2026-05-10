@@ -1,109 +1,113 @@
 ---
 name: changeguard
-description: Use ChangeGuard for local-first change intelligence and transactional provenance. Trigger this skill whenever a repository contains `.changeguard/`, or the user mentions "risk," "impact analysis," "blast radius," "hotspots," "temporal coupling," "drift," "verification planning," "architectural transactions," or wants safer changes with evidence from `scan`, `impact`, `verify`, or `ledger`.
+description: Use this skill when working in a repository initialized with `.changeguard/` and the task involves code edits, reviews, impact/risk analysis, verification planning, drift handling, ledger provenance, or deciding what tests to run. Before meaningful edits, run ChangeGuard scan/impact; after edits, run verification and report unresolved drift or ledger state.
 ---
 
 # ChangeGuard
 
-Use this skill to perform risk analysis, impact assessment, and record transactional provenance for code changes. ChangeGuard provides a safety and planning layer to understand what changed, what is affected, and what must be verified.
+Use ChangeGuard as the local safety layer and engineering intelligence engine for code changes. It provides impact analysis, hotspot and temporal-coupling signals, verification planning, and transactional provenance.
 
-## When NOT to use
+## Core Capabilities
 
-Avoid triggering ChangeGuard for:
-- **Trivial Formatting**: Pure whitespace changes or `cargo fmt` runs.
-- **Dependency Bumps**: Simple version updates in lockfiles with no API changes.
-- **Explicit Bypass**: When the user explicitly says "just make the edit" or "bypass ChangeGuard."
-- **Non-Code Assets**: Edits to binary files, media, or temporary scratch files.
+- **Search & Discovery**: High-performance regex (Tantivy), precise LSP navigation (SCIP), and conceptual semantic search (local embeddings).
+- **Impact Analysis**: Deep "blast radius" analysis across 20+ specialized providers (Infra, Contracts, Observability, Temporal).
+- **Predictable Verification**: Bayesian test reordering and CI failure prediction.
+- **Transactional Ledger**: Record architectural intent and decisions as atomic transactions.
+- **Documentation Generation**: Export Knowledge Graph data to Markdown/Mermaid passive documentation (`index --export-docs`).
+- **Dead Code Detection**: Confidence-based dead code detection blending graph reachability, git activity, and test history (`dead-code` command).
+- **Live Visualization**: WebSocket-based Arc Diagram for real-time Knowledge Graph updates (`viz-server`, `viz-server --stop`).
 
-## Availability & Fallback
+## Philosophy: CLI-First Intelligence
 
-Check if ChangeGuard is initialized in the current repository:
+ChangeGuard is a **CLI-first** tool and **explicitly rejects MCP/Server/Cloud architecture** for v1. It provides structured, "Gemini-ready" context directly via its CLI outputs. Use ChangeGuard commands as your primary discovery and safety tools.
+
+## Default Workflow
+
+1. Check availability when uncertain:
+
+   ```bash
+   changeguard doctor
+   ```
+
+2. Check current provenance state:
+
+   ```bash
+   changeguard ledger status
+   ```
+
+3. Before meaningful code edits, assess impact:
+
+   ```bash
+   changeguard scan --impact
+   ```
+
+4. Read `.changeguard/reports/latest-impact.json` when it exists. Use it to
+   identify risk level, hotspots, temporal couplings, affected symbols, runtime
+   dependencies, and verification hints.
+
+5. Make the smallest scoped change that satisfies the task.
+
+6. After edits, run:
+
+   ```bash
+   changeguard verify
+   ```
+
+   Also run any repo-specific tests needed for the touched files.
+
+7. Report the outcome: impact/risk signals used, verification run, and any
+   unresolved pending transactions, drift, or unavailable ChangeGuard command.
+
+## When To Skip
+
+Skip ChangeGuard only for trivial formatting, simple dependency lockfile updates,
+binary/media changes, temporary scratch files, or when the user explicitly says
+to bypass it.
+
+## If Commands Fail
+
+- If `changeguard` is unavailable, continue with normal repo tools and tell the
+  user ChangeGuard signals were unavailable.
+- If `ledger status` shows unaudited drift, reconcile or adopt before continuing
+  unless the user directs otherwise.
+- If `scan --impact` cannot complete, continue cautiously and include the error
+  in the final report.
+- Do not edit `.changeguard/` state files directly.
+
+## Ledger Provenance
+
+For tracked manual edits:
 
 ```bash
-changeguard doctor
+changeguard ledger start <entity> --category <CAT> --message "Intent"
+# edit files
+changeguard ledger commit <tx-id> --summary "Done" --reason "Why"
 ```
 
-If the command is missing, see [install.md](./references/install.md). If you cannot install it, continue with standard repository tools but inform the user that ChangeGuard signals are unavailable.
-
-## Core Workflow
-
-Before making a meaningful edit, assess the risk:
+For surgical one-command provenance:
 
 ```bash
-changeguard scan --impact
+changeguard ledger atomic <entity> --category <CAT> --summary "Task" --reason "Goal"
 ```
 
-Read the generated report at `.changeguard/reports/latest-impact.json` to identify risk level, affected symbols, and temporal couplings.
+## Reasoning Rules
 
-After making edits, verify the change:
+- If temporal coupling is above 70% for an unchanged file, inspect that file.
+- If hotspots are reported, bias verification toward those files first.
+- If KG reachability identifies downstream nodes, inspect them before finalizing.
+- Treat hooks and CI gates as enforcement. Treat this skill as guidance.
+
+## Working On ChangeGuard Itself
+
+After changing ChangeGuard source code, rebuild and reinstall before relying on
+the `changeguard` command:
 
 ```bash
-changeguard verify
+cargo install --path .
 ```
 
-Evidence of successful validation is stored in `.changeguard/reports/latest-verify.json`. For full command details, see [commands.md](./references/commands.md).
+## References
 
-## Ledger Workflow (Provenance)
-
-For tracked changes, record the intent and outcome in the ledger.
-
-**Tracked Edit (Manual):**
-1. `changeguard ledger start --entity <path> --category <CAT> --message "Intent"`
-2. *Perform edits...*
-3. `changeguard ledger commit --tx-id <id> --summary "Done" --reason "Why"`
-
-**Surgical Edit (Atomic):**
-Use this for single-file changes where the start and commit happen together:
-```bash
-changeguard ledger atomic --entity <path> --category <CAT> --summary "Task" --reason "Goal"
-```
-
-**Lightweight Note:**
-Use this to add metadata to a file without a formal transaction:
-```bash
-changeguard ledger note --entity <path> "Metadata note"
-```
-
-## Strategic Reasoning
-
-Adjust your coding strategy based on ChangeGuard signals:
-
-1. **Temporal Coupling**: If a changed file has a high affinity (>70%) with an unchanged file, you **MUST** read that unchanged file. Logical dependencies often exist where imports do not.
-2. **Hotspots**: Files with high hotspot scores are brittle. Prioritize refactoring or higher test coverage when editing them.
-3. **Federated Impact**: If `federated_impact` warnings appear, your change may break a sibling repository. Explain this risk to the user.
-4. **Predictive Verification**: Trust the `verify` command's suggestions, even if they seem unrelated; they are often based on historical failure correlations.
-5. **Drift Detection**: If `ledger status` shows `UNAUDITED` entries, files were modified outside a transaction. Use `ledger reconcile` or `ledger adopt` before continuing.
-
-## Interpreting Results
-
-Use the `riskLevel` from impact reports to route your effort:
-- **Low**: Small/isolated change. Run suggested verification.
-- **Medium**: Inspect affected symbols and risk reasons before choosing tests.
-- **High**: Slow down. Inspect temporal couplings, public API changes, and cross-repo links before finalizing.
-
-For quick triage, use `changeguard impact --summary`.
-
-## Editing Rules
-
-**Before Edits:**
-- Run `changeguard scan --impact`.
-- For tracked changes, run `changeguard ledger start`.
-
-**During Edits:**
-- Do not edit state under `.changeguard/`.
-- Do not commit transient ChangeGuard files or SQLite state.
-
-**After Edits:**
-- Run `changeguard verify` and any repo-specific tests.
-- For tracked changes, run `changeguard ledger commit`.
-
-## Final Response Template (Optional)
-
-For substantive changes, summarize the evidence:
-```text
-ChangeGuard:
-- impact: <low|medium|high> (risk reasons)
-- hotspots/couplings: <findings or "none">
-- verification: <commands run and result>
-- ledger: <tx_id or "untracked">
-```
+- Command details: `references/commands.md` (includes ledger, impact, dead-code, viz-server, doc generation, watch)
+- Install fallback: `references/install.md`
+- Architecture/internal notes: `references/internals.md`

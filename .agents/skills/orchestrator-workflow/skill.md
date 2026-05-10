@@ -11,7 +11,7 @@ You are the **Orchestrator**. Your primary responsibility is to maintain the hig
 
 AI-Brains uses a structured delivery mechanism known as **Tracks**. Each track is a bounded unit of work with a `spec.md` (specification) and `plan.md` (task checklist).
 
-Track status is maintained in `Docs/conductor/conductor.md`.
+Track status is maintained in `conductor/conductor.md`.
 
 ## ChangeGuard Integration
 
@@ -42,9 +42,9 @@ ChangeGuard tracks architectural provenance. Use it at these points:
 3. **Analyze Couplings:** Run `changeguard hotspots` to identify if the target crate is brittle.
 4. **Start Transaction:** `changeguard ledger start T<ID>-<name> --category <CAT>`
 5. **Write Spec & Plan**:
-   - Spec: `Docs/conductor/trackT<ID>/spec.md` — objective, API contracts, verification plan.
-   - Plan: `Docs/conductor/trackT<ID>/plan.md` — task checklist with `- [ ]`.
-6. **Register:** Update `Docs/conductor/conductor.md` status to `In Progress`.
+   - Spec: `conductor/tracks/trackT<ID>/spec.md` — objective, API contracts, verification plan.
+   - Plan: `conductor/tracks/trackT<ID>/plan.md` — task checklist with `- [ ]`.
+6. **Register:** Update `conductor/conductor.md` status to `In Progress`.
 
 ### 2. Implementation Phase
 1. **Delegate Implementation:** Invoke the appropriate sub-agent (e.g., `generalist` or `coding-core`).

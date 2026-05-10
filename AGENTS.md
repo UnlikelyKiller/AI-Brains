@@ -24,5 +24,5 @@
 - **Test-Driven Development**: Behavioral correctness MUST be proven via failing tests before implementation (Two-commit minimum: Red -> Green).
 - **CI Gate**: Before every commit, the workspace MUST pass:
   `cargo fmt --check ; cargo clippy --workspace --all-targets -- -D warnings ; cargo nextest run --workspace ; cargo deny check ; cargo audit`
-- **Track Discipline**: Implementation MUST follow the `Implementation-Plan.md` track-by-track.
+- **Track Discipline**: Implementation MUST follow the `conductor/conductor.md` track-by-track.
 - **Change Management**: Run `changeguard scan --impact` before edits and `changeguard verify` before commits.

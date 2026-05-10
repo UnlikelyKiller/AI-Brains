@@ -65,7 +65,7 @@ cargo fmt --check ; cargo clippy --workspace --all-targets -- -D warnings ; carg
 | `Docs/PRD.md` | Product vision and core requirements |
 | `Docs/Implementation-Plan.md` | Master execution plan (Tracks) |
 | `.agents/rules/core-mandates.md` | Non-negotiable mandates |
-| `Docs/conductor/` | Track management and review checklists |
+| `conductor/` | Track management and review checklists |
 
 ## Quick Start
 
