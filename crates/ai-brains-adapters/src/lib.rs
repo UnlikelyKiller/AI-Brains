@@ -15,8 +15,8 @@ mod wrapper;
 pub use adapter::{adapter_capability, AdapterKind};
 pub use antigravity::{
     antigravity_capability, discover_sessions, extract_turns, filter_recent_sessions,
-    manual_import_instructions, parse_overview_file, session_id_from_path, AntigravityStep,
-    AntigravityTurn,
+    import_antigravity_sessions, manual_import_instructions, parse_overview_file,
+    session_id_from_path, AntigravityStep, AntigravityTurn,
 };
 pub use capability::{AdapterCapability, CapabilityLevel};
 pub use claude::parse_claude_stop_payload;

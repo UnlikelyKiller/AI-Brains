@@ -8,6 +8,10 @@ pub enum AdapterError {
     Json(#[from] serde_json::Error),
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
+    #[error("store error: {0}")]
+    Store(#[from] rusqlite::Error),
+    #[error("capture error: {0}")]
+    Capture(#[from] ai_brains_capture::CaptureError),
     #[error("{0}")]
     Other(String),
 }

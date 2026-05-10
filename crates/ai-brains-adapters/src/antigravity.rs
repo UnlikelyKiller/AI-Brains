@@ -1,7 +1,15 @@
 use crate::capability::{AdapterCapability, CapabilityLevel};
 use crate::errors::{AdapterError, Result};
+use ai_brains_capture::{CaptureContext, CaptureService, CaptureSink, SessionStopStatus};
+use ai_brains_contracts::ingest::IngestRequest;
+use ai_brains_core::ids::{HarnessId, ProjectId, SessionId, TurnId};
+use ai_brains_core::privacy::Privacy;
+use rusqlite::{params, OptionalExtension};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
+use std::time::{Duration, SystemTime};
+use uuid::Uuid;
 
 pub fn antigravity_capability() -> AdapterCapability {
     AdapterCapability {
@@ -126,10 +134,10 @@ pub fn parse_overview_file(path: &Path) -> Result<Vec<AntigravityStep>> {
 /// (no hidden thinking or tool logs).
 ///
 /// Rules:
-/// - USER_EXPLICIT / USER_INPUT → role "user", strip XML metadata tags
-/// - MODEL / PLANNER_RESPONSE with non-empty content → role "assistant"
-/// - MODEL / PLANNER_RESPONSE with only tool_calls (no content) → skip
-/// - MODEL / TOOL_OUTPUT → skip
+/// - USER_EXPLICIT / USER_INPUT -> role "user", strip XML metadata tags
+/// - MODEL / PLANNER_RESPONSE with non-empty content -> role "assistant"
+/// - MODEL / PLANNER_RESPONSE with only tool_calls (no content) -> skip
+/// - MODEL / TOOL_OUTPUT -> skip
 pub fn extract_turns(steps: &[AntigravityStep]) -> Vec<AntigravityTurn> {
     let mut turns = Vec::new();
 
@@ -237,6 +245,135 @@ fn extract_xml_content(content: &str, tag: &str) -> Option<String> {
     }
 
     Some(content[start + open.len()..end].trim().to_string())
+}
+
+/// Orchestrates the import of Antigravity sessions.
+pub fn import_antigravity_sessions<S: CaptureSink>(
+    conn: &rusqlite::Connection,
+    service: &CaptureService,
+    sink: &mut S,
+    days: usize,
+    project_id: ProjectId,
+) -> Result<(usize, usize)> {
+    let all_sessions = discover_sessions()?;
+    if all_sessions.is_empty() {
+        return Ok((0, 0));
+    }
+
+    let recent_sessions = filter_recent_sessions(&all_sessions, days);
+    if recent_sessions.is_empty() {
+        return Ok((0, 0));
+    }
+
+    // Canonical Antigravity Harness ID
+    let antigravity_harness = HarnessId::from_str("00000000-0000-0000-0000-000000000001")
+        .map_err(|e| AdapterError::Other(format!("Invalid canonical harness ID: {}", e)))?;
+
+    let mut total_turns = 0;
+    let mut sessions_imported = 0;
+
+    for overview_path in &recent_sessions {
+        // Quiescence check: Skip if modified in the last 5 minutes
+        if let Ok(metadata) = std::fs::metadata(overview_path) {
+            if let Ok(modified) = metadata.modified() {
+                if SystemTime::now()
+                    .duration_since(modified)
+                    .unwrap_or(Duration::ZERO)
+                    < Duration::from_secs(300)
+                {
+                    continue;
+                }
+            }
+        }
+
+        let session_id_str = match session_id_from_path(overview_path) {
+            Some(id) => id,
+            None => continue,
+        };
+
+        let session_id = SessionId::from_uuid(
+            Uuid::parse_str(&session_id_str).unwrap_or_else(|_| Uuid::new_v4()),
+        );
+
+        // Status-aware idempotency check
+        {
+            let mut stmt =
+                conn.prepare("SELECT status FROM session_projection WHERE session_id = ?")?;
+            let status: Option<String> = stmt
+                .query_row(params![session_id_str], |row| row.get(0))
+                .optional()?;
+
+            if let Some(s) = status {
+                if s == "completed" {
+                    continue;
+                }
+            }
+        }
+
+        let steps = match parse_overview_file(overview_path) {
+            Ok(s) => s,
+            Err(_) => continue,
+        };
+
+        let turns = extract_turns(&steps);
+        if turns.is_empty() {
+            continue;
+        }
+
+        let capture_context = CaptureContext {
+            git_working_dir: std::env::current_dir().ok(),
+        };
+
+        // Start the session
+        service.start_session(
+            ai_brains_capture::SessionStartCommand {
+                session_id,
+                project_id,
+                harness_id: antigravity_harness,
+                privacy: Privacy::LocalOnly,
+            },
+            capture_context.clone(),
+            sink,
+        )?;
+
+        // Ingest each turn with deterministic Turn IDs
+        for (i, turn) in turns.iter().enumerate() {
+            let turn_id = TurnId::from_uuid(Uuid::new_v5(
+                &session_id.as_uuid(),
+                format!("turn-{}", i).as_bytes(),
+            ));
+
+            let request = IngestRequest {
+                session_id,
+                project_id,
+                harness_id: antigravity_harness,
+                turn_id,
+                role: turn.role.clone(),
+                content: turn.content.clone(),
+                privacy: Privacy::LocalOnly,
+                thinking: None,
+            };
+            service.ingest_request(request, capture_context.clone(), sink)?;
+            total_turns += 1;
+        }
+
+        // Mark as completed
+        service.stop_session(
+            ai_brains_capture::SessionStopCommand {
+                session_id,
+                harness_id: antigravity_harness,
+                privacy: Privacy::LocalOnly,
+                status: SessionStopStatus::Completed,
+                reason: Some("Antigravity batch import complete".to_string()),
+            },
+            capture_context,
+            sink,
+        )?;
+
+        sessions_imported += 1;
+    }
+
+    Ok((total_turns, sessions_imported))
 }
 
 #[cfg(test)]

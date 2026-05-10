@@ -7,8 +7,12 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+ai-brains-core = { path = "../ai-brains-core" }
+ai-brains-capture = { path = "../ai-brains-capture" }
 ai-brains-contracts = { path = "../ai-brains-contracts" }
+rusqlite = { workspace = true }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 dirs = "6.0"
+uuid = { workspace = true, features = ["v4", "v5"] }

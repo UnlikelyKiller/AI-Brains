@@ -1,9 +1,9 @@
 # Conductor Master Track Board
 
 ## Project Status
-**Status:** Completed
-**Phase:** Phase 15 - Cross-Agent Memory Synthesis [COMPLETED]
-**Current Track:** Finalized
+**Status:** In Progress
+**Phase:** Phase 16 - Technical Debt & Refactoring [IN PROGRESS]
+**Current Track:** T35 - CLI Refactor
 **Verification:** Full Windows workspace gate is green as of 2026-05-10. Relational graph verified in workspace; cross-agent synthesis and harness hooks verified.
 
 ## Track Registry
@@ -41,14 +41,21 @@
 | T32 | Preflight ANSI Cleanup & Dedup | **Completed** | Orchestrator | | Strip ANSI codes, deduplicate safety/index, condense hotspots. |
 | T33 | Antigravity Conversation Import | **Completed** | Orchestrator | | Parse Antigravity logs, import turns into nightly, CLI subcommand. |
 | T34 | Resilient Summarization Truncation | **Completed** | Orchestrator | | Sequential chunking with context carryover for large sessions. |
+| T35 | CLI Refactor | **Completed** | Orchestrator | [T35](./tracks/trackT35/spec.md) | Decomposed main.rs, created AppContext, moved Antigravity import. |
 
 ## Current Verification Snapshot
 - `cargo fmt`: passes.
-- `cargo check --workspace --all-targets`: passes.
 - `cargo clippy --workspace --all-targets -- -D warnings`: passes.
 - `cargo test --workspace`: passes.
 - Relational graph: native SQLite backend; no C++ dependencies.
 - `changeguard ledger status`: no pending transactions and no unaudited drift.
+
+## Completed Track: T35 - CLI Refactor
+- [x] Decomposed `main.rs` God File into modular command handlers in `src/commands/`.
+- [x] Introduced `AppContext` to encapsulate shared vault and connection state.
+- [x] Migrated Antigravity import core logic to `ai-brains-adapters`.
+- [x] Verified zero behavioral regression via CLI integration tests.
+- [x] Pass CI gate (formatting, clippy, test, deny, audit).
 
 ## Completed Track: T34 - Resilient Summarization Truncation
 - [x] Upgraded `ModelProvider` with `tokenize()` and character-based estimation fallback.
