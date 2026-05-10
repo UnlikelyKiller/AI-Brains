@@ -37,7 +37,7 @@
 | T28 | Cross-Agent Harness | **Completed** | Orchestrator | Cross-agent synthesis and standardized hook implementation. |
 | T29 | Relational Graph | **Completed** | Orchestrator | Migrate graph projection to SQLite (ADR-0009). |
 | T30 | Hardening Protocol | **Completed** | Orchestrator | Optimization, encoding fixes, and agentic protocol overhaul. |
-| T31 | Onboarding & Observability | **In Progress** | Orchestrator | Integrate 4-layer repo understanding (ADR-0010). |
+| T31 | Onboarding & Observability | **Completed** | Orchestrator | Integrate 4-layer repo understanding (ADR-0010). |
 | T32 | Preflight ANSI Cleanup & Dedup | **Completed** | Orchestrator | Strip ANSI codes, deduplicate safety/index, condense hotspots. |
 | T33 | Antigravity Conversation Import | **Completed** | Orchestrator | Parse Antigravity logs, import turns into nightly, CLI subcommand. |
 | T34 | Resilient Summarization Truncation | **Completed** | Orchestrator | Sequential chunking with context carryover for large sessions. |
@@ -159,3 +159,10 @@
 - [x] Added `AI_BRAINS_CTX_SIZE` environment control for hardware-specific stability (Intel Arc B580).
 - [x] Verified via integration test `nightly_summarizes_large_session`.
 - [x] Updated `Docs/Deviations.md` with hardware-stable context strategies.
+
+## Completed Track: T31 - Onboarding & Observability
+- [x] Hardened `ai-brains` skill with 4-layer protocol (Structural, Behavioral, Observability, Safety).
+- [x] Implemented `ai-brains safety sync` for ChangeGuard hotspot ingestion.
+- [x] Budget-aware preflight context generation with ANSI stripping and deduplication.
+- [x] ChangeGuard ledger transaction `cf1b21f6` recorded for protocol hardening.
+- [x] Verified word-budget enforcement in `ai-brains-retrieval`.

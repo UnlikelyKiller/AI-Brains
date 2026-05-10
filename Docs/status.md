@@ -4,12 +4,12 @@
 **Current Track:** T34
 
 ## 1. Executive Summary
-Implemented Antigravity conversation import: parsing JSONL logs from `~/.gemini/antigravity/brain/`, extracting user/assistant turns while enforcing mandate #4 (no hidden thinking/tool logs), and integrating the import into nightly runs. Also includes the T32 preflight ANSI cleanup fixes.
+Hardened the AI-Brains intelligence layer with **Track T34: Resilient Summarization Truncation**, implementing sequential chunking with context carryover for extremely large sessions (39k+ tokens). This ensures stable, turn-aware memory synthesis on VRAM-constrained hardware (Intel Arc B580). Additionally, Track T31 (Onboarding & Observability) has been reconciled, establishing a 4-layer agentic protocol for repository understanding.
 
 ## 2. Implemented Milestones
 
 ###- [x] **Track T30: Hardening & Protocol Optimization** (Finalized JSON synthesis and PowerShell fixes)
-- [/] **Track T31: Onboarding & Observability Protocol** (Integrating 4-layer repo understanding)
+- [x] **Track T31: Onboarding & Observability Protocol** (Integrating 4-layer repo understanding)
 - [x] **Track T32: Preflight ANSI Cleanup & Dedup** (Strip ANSI, deduplicate, condense hotspots)
 - [x] **Track T33: Antigravity Conversation Import** (Parse logs, nightly integration, CLI subcommand)
   - Added `strip-ansi-escapes` crate dependency to workspace
