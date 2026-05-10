@@ -10,6 +10,7 @@ repository.workspace = true
 ai-brains-core = { path = "../ai-brains-core" }
 ai-brains-capture = { path = "../ai-brains-capture" }
 ai-brains-contracts = { path = "../ai-brains-contracts" }
+ai-brains-store = { path = "../ai-brains-store" }
 rusqlite = { workspace = true }
 serde.workspace = true
 serde_json.workspace = true

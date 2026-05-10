@@ -4,7 +4,6 @@ use ai_brains_capture::{CaptureContext, CaptureService, CaptureSink, SessionStop
 use ai_brains_contracts::ingest::IngestRequest;
 use ai_brains_core::ids::{HarnessId, ProjectId, SessionId, TurnId};
 use ai_brains_core::privacy::Privacy;
-use rusqlite::{params, OptionalExtension};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -249,7 +248,7 @@ fn extract_xml_content(content: &str, tag: &str) -> Option<String> {
 
 /// Orchestrates the import of Antigravity sessions.
 pub fn import_antigravity_sessions<S: CaptureSink>(
-    conn: &rusqlite::Connection,
+    query_store: &dyn ai_brains_store::QueryStore,
     service: &CaptureService,
     sink: &mut S,
     days: usize,
@@ -295,18 +294,10 @@ pub fn import_antigravity_sessions<S: CaptureSink>(
             Uuid::parse_str(&session_id_str).unwrap_or_else(|_| Uuid::new_v4()),
         );
 
-        // Status-aware idempotency check
-        {
-            let mut stmt =
-                conn.prepare("SELECT status FROM session_projection WHERE session_id = ?")?;
-            let status: Option<String> = stmt
-                .query_row(params![session_id_str], |row| row.get(0))
-                .optional()?;
-
-            if let Some(s) = status {
-                if s == "completed" {
-                    continue;
-                }
+        // Status-aware idempotency check via QueryStore
+        if let Ok(Some(status)) = query_store.get_session_status(&session_id) {
+            if status == "completed" {
+                continue;
             }
         }
 

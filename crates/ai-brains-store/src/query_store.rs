@@ -29,8 +29,8 @@ impl QueryStore for VaultConnection {
         )?;
 
         let mut stmt = conn.prepare(
-            "SELECT role, content FROM turn_projection 
-             WHERE session_id = ? 
+            "SELECT role, content FROM turn_projection
+             WHERE session_id = ?
              ORDER BY occurred_at ASC",
         )?;
         let rows = stmt.query_map([session_id], |row| Ok((row.get(0)?, row.get(1)?)))?;
@@ -41,6 +41,15 @@ impl QueryStore for VaultConnection {
         Ok(results)
     }
 
+    fn get_session_status(&self, session_id: &ai_brains_core::ids::SessionId) -> Result<Option<String>> {
+        use rusqlite::{params, OptionalExtension};
+        let conn = self.lock()?;
+        let mut stmt = conn.prepare("SELECT status FROM session_projection WHERE session_id = ?")?;
+        let status: Option<String> = stmt
+            .query_row(params![session_id.to_string()], |row| row.get(0))
+            .optional()?;
+        Ok(status)
+    }
     fn search_memories(&self, query: &str, limit: usize) -> Result<Vec<(MemoryId, String)>> {
         let conn = self.lock()?;
         let mut stmt = conn.prepare(
