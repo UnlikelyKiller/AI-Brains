@@ -76,12 +76,38 @@ pub fn build_preflight(
         let mut session_texts = Vec::new();
         for session in active {
             let mut session_lines = vec![format!("--- Session: {} ---", session.session_id)];
+            let had_turns = !session.turns.is_empty();
             for turn in session.turns {
-                session_lines.push(format!("{}: {}", turn.role.to_uppercase(), turn.content));
+                let content = &turn.content;
+                // Skip test markers
+                if content.starts_with("MANUAL_TEST:") || content.starts_with("VERIFY:") {
+                    continue;
+                }
+                // Skip HOTSPOT content — safety section already has the authoritative copy
+                if content.contains("HOTSPOT:") {
+                    continue;
+                }
+                // Skip CONSTRAINT/INVARIANT already shown in safety
+                if (content.contains("CONSTRAINT:") || content.contains("INVARIANT:"))
+                    && safety_entries.iter().any(|e| e.contains(content.as_str()))
+                {
+                    continue;
+                }
+                // Skip low-signal turns
+                if is_low_signal(content) {
+                    continue;
+                }
+                let truncated = truncate_turn(content);
+                session_lines.push(format!("{}: {}", turn.role.to_uppercase(), truncated));
             }
-            session_texts.push(session_lines.join("\n"));
+            // Include session if it has unfiltered turns, or if it was empty to begin with
+            if session_lines.len() > 1 || !had_turns {
+                session_texts.push(session_lines.join("\n"));
+            }
         }
-        sections.push(session_texts.join("\n\n"));
+        if !session_texts.is_empty() {
+            sections.push(session_texts.join("\n\n"));
+        }
     }
 
     // --- General Memory Index (scoped to current project when project_id is known) ---
@@ -123,6 +149,11 @@ pub fn build_preflight(
         let content: String = row.get(1)?;
         let updated_at: String = row.get(3)?;
         let content = strip_ansi(&content);
+
+        // Skip low-signal entries
+        if is_low_signal(&content) {
+            continue;
+        }
         let candidate = if collected.is_empty() {
             content.clone()
         } else {
@@ -200,9 +231,14 @@ fn extract_hotspot_paths(content: &str) -> Vec<String> {
             line.contains('|') && (line.contains("crates/") || line.contains("scripts/"))
         })
         .filter_map(|line| {
-            // Last pipe-delimited field is the file path
-            let parts: Vec<&str> = line.split('|').collect();
-            parts.last().map(|s| s.trim().to_string())
+            // Split and collect non-empty segments; last non-empty is the file path.
+            // Handles trailing '|' in markdown table rows.
+            let parts: Vec<&str> = line
+                .split('|')
+                .map(|s| s.trim())
+                .filter(|s| !s.is_empty())
+                .collect();
+            parts.last().map(|s| s.to_string())
         })
         .filter(|p| !p.is_empty() && !p.starts_with('-') && !p.starts_with('=') && p != "File Path")
         .collect()
@@ -215,7 +251,7 @@ fn dedup_hotspots(entries: Vec<(String, String)>) -> Vec<String> {
     let mut result = Vec::new();
 
     for (content, _updated_at) in &entries {
-        if content.starts_with("HOTSPOT:") {
+        if content.contains("HOTSPOT:") {
             let paths = extract_hotspot_paths(content);
             if paths.is_empty() {
                 // Can't parse paths — keep the entry as-is
@@ -265,5 +301,110 @@ fn relative_timestamp(rfc3339_str: &str) -> String {
         format!("{} wk ago", duration.num_days() / 7)
     } else {
         format!("{} mo ago", duration.num_days() / 30)
+    }
+}
+
+/// Check if content is low-signal — build monitoring, single-word replies, etc.
+fn is_low_signal(content: &str) -> bool {
+    let wc = word_count(content);
+    // Very short (< 6 words): single-word replies like "proceed", "yes", etc.
+    if wc < 6 {
+        return true;
+    }
+    // Short (6-15 words): check for build-monitoring patterns
+    if wc < 15 {
+        let low_signal_patterns = [
+            "Waiting for results",
+            "Package name is",
+            "Errors incoming",
+            "Workspace package names",
+            "Compile check:",
+        ];
+        for pat in &low_signal_patterns {
+            if content.contains(pat) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+/// Truncate turn content to first 3 lines / 150 words, appending "..." if cut.
+fn truncate_turn(content: &str) -> String {
+    let lines: Vec<&str> = content.lines().collect();
+    let wc = word_count(content);
+
+    if lines.len() <= 3 && wc <= 150 {
+        return content.to_string();
+    }
+
+    let truncated_lines: Vec<&str> = lines.into_iter().take(3).collect();
+    let mut result = truncated_lines.join("\n");
+    result = trim_to_word_budget(&result, 150);
+
+    if word_count(&result) < wc {
+        result.push_str("\n...");
+    }
+
+    result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dedup_hotspots_removes_duplicate_paths() {
+        let entries = vec![
+            (
+                "ASSISTANT: HOTSPOT: Codebase Hotspots (Risk Density)\n\
+                 | Rank | Score | Freq | Comp | File Path |\n\
+                 |------+------+------+------+----------------------------------------------------------------------|\n\
+                 | 1 | 0.133 | 2 | 2 | crates/ai-brains-cli/tests/cli_capture_smoke.rs |\n\
+                 | 2 | 0.133 | 2 | 2 | crates/ai-brains-cli/tests/ingest_reads_json_stdin.rs |"
+                    .to_string(),
+                "2026-01-01T00:00:00Z".to_string(),
+            ),
+            (
+                "ASSISTANT: CONSTRAINT: Every repo must have AI_BRAINS_PROJECT_ID.".to_string(),
+                "2026-01-01T00:00:00Z".to_string(),
+            ),
+            (
+                "ASSISTANT: HOTSPOT: Codebase Hotspots (Risk Density)\n\
+                 | Rank | Score | Freq | Comp | File Path |\n\
+                 |------+------+------+------+----------------------------------------------------------------------|\n\
+                 | 1 | 0.2 | 2 | 2 | crates/ai-brains-cli/tests/cli_capture_smoke.rs |\n\
+                 | 2 | 0.2 | 2 | 2 | crates/ai-brains-cli/tests/ingest_reads_json_stdin.rs |"
+                    .to_string(),
+                "2026-01-01T00:00:00Z".to_string(),
+            ),
+        ];
+
+        let result = dedup_hotspots(entries);
+        assert_eq!(
+            result.len(),
+            2,
+            "should keep one HOTSPOT + one CONSTRAINT, got: {:?}",
+            result
+        );
+        assert!(result[0].contains("HOTSPOT:"), "first should be HOTSPOT");
+        assert!(
+            result[1].contains("CONSTRAINT:"),
+            "second should be CONSTRAINT"
+        );
+    }
+
+    #[test]
+    fn extract_hotspot_paths_works() {
+        let content = "ASSISTANT: HOTSPOT: Codebase Hotspots\n\
+                       | Rank | Score | File Path |\n\
+                       |------+-------+------------------------------|\n\
+                       | 1 | 0.5 | crates/app/src/main.rs |\n\
+                       | 2 | 0.3 | scripts/deploy.ps1 |";
+
+        let paths = extract_hotspot_paths(content);
+        assert_eq!(paths.len(), 2);
+        assert!(paths.contains(&"crates/app/src/main.rs".to_string()));
+        assert!(paths.contains(&"scripts/deploy.ps1".to_string()));
     }
 }
