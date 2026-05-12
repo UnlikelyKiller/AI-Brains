@@ -19,9 +19,9 @@ AI-Brains uses three turn-scoped events for reliable memory synchronization:
 
 | Event | When It Fires | AI-Brains Action |
 | :--- | :--- | :--- |
-| **`SessionStart`** | Startup/Resume | **Preflight**: Injects initial memory context. |
-| **`UserPromptSubmit`** | Before every prompt | **Ingest**: Captures the user's intent immediately. |
-| **`Stop`** | End of turn | **Ingest**: Captures the final assistant response. |
+| **`session_start`** | Startup/Resume | **Preflight**: Injects initial memory context. |
+| **`user_prompt_submit`** | Before every prompt | **Ingest**: Captures the user's intent immediately. |
+| **`stop`** | End of turn | **Ingest**: Captures the final assistant response. |
 
 ### Technical Nuances
 
@@ -56,9 +56,9 @@ Create or update `C:\Users\RyanB\.codex\hooks.json`:
 ```json
 {
   "hooks": {
-    "SessionStart": [
+    "session_start": [
       {
-        "matcher": "startup|resume|clear",
+        "matcher": "*",
         "hooks": [
           {
             "name": "ai-brains-preflight",
@@ -70,7 +70,7 @@ Create or update `C:\Users\RyanB\.codex\hooks.json`:
         ]
       }
     ],
-    "UserPromptSubmit": [
+    "user_prompt_submit": [
       {
         "hooks": [
           {
@@ -83,7 +83,7 @@ Create or update `C:\Users\RyanB\.codex\hooks.json`:
         ]
       }
     ],
-    "Stop": [
+    "stop": [
       {
         "hooks": [
           {
