@@ -1,4 +1,4 @@
-use ai_brains_core::ids::MemoryId;
+use ai_brains_core::ids::{MemoryId, ProjectId};
 use ai_brains_events::{MemorySynthesizedPayload, Payload};
 use ai_brains_models::{CompletionRequest, ModelProvider};
 use ai_brains_store::{EventStore, QueryStore};
@@ -26,6 +26,7 @@ impl MemorySynthesizer {
     pub async fn run_synthesis(
         &self,
         target_level: u32,
+        project_id: ProjectId,
     ) -> Result<usize, Box<dyn std::error::Error>> {
         if target_level == 0 {
             return Ok(0);
@@ -77,6 +78,7 @@ impl MemorySynthesizer {
                 content: synthesis,
                 source_memory_ids,
                 level: target_level,
+                project_id,
             }))?;
 
             self.event_store.append_event(&event)?;

@@ -260,6 +260,7 @@ dependencies = [
  "ai-brains-events",
  "ai-brains-graph",
  "ai-brains-store",
+ "chrono",
  "rusqlite",
  "serde_json",
  "strip-ansi-escapes",

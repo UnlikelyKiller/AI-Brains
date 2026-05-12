@@ -15,6 +15,15 @@ function Write-HookResponse($response) {
     $response | ConvertTo-Json -Depth 10 -Compress
 }
 
+function Normalize-HookEventName($eventName) {
+    switch ($eventName) {
+        "session_start" { return "SessionStart" }
+        "user_prompt_submit" { return "UserPromptSubmit" }
+        "stop" { return "Stop" }
+        default { return $eventName }
+    }
+}
+
 function Load-Env($path) {
     if (Test-Path -LiteralPath $path) {
         Write-Log "Loading env from $path"
@@ -92,11 +101,11 @@ function De-Noise($content) {
         if ($line -match '^```') {
             if ($inCodeBlock) {
                 if ($currentBlock.Count -le 10) {
-                    $filteredLines += "```"
+                    $filteredLines += '```'
                     $filteredLines += $currentBlock
-                    $filteredLines += "```"
+                    $filteredLines += '```'
                 } else {
-                    $filteredLines += "```... [Long block stripped] ...```"
+                    $filteredLines += '```... [Long block stripped] ...```'
                 }
                 $currentBlock = @()
                 $inCodeBlock = $false
@@ -228,7 +237,7 @@ if (-not $projectDir) { $projectDir = $PWD.Path }
 if ($projectDir) { Load-Env (Join-Path $projectDir ".env") }
 Load-Env (Join-Path $HOME ".ai-brains\.env")
 
-$event = $inputJson.hook_event_name
+$event = Normalize-HookEventName $inputJson.hook_event_name
 Write-Log "Event: $event | CWD: $projectDir"
 
 switch ($event) {

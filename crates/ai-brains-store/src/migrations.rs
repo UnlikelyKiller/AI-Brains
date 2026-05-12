@@ -58,6 +58,10 @@ pub const MIGRATIONS: &[(&str, &str)] = &[
         "0014_memory_session_context",
         include_str!("../migrations/0014_memory_session_context.sql"),
     ),
+    (
+        "0015_memory_project_id",
+        include_str!("../migrations/0015_memory_project_id.sql"),
+    ),
 ];
 
 pub fn apply_migrations(conn: &mut Connection) -> Result<()> {

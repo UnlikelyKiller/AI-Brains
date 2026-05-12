@@ -42,6 +42,7 @@ async fn test_forget_excludes_from_search() -> Result<(), Box<dyn std::error::Er
         ai_brains_events::MemoryPinnedPayload {
             memory_id,
             content: "Remember this secret recipe.".to_string(),
+            session_id: None,
         },
     ))?;
     event_store.append_event(&event)?;

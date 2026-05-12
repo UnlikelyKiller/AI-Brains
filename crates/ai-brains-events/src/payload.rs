@@ -56,6 +56,7 @@ pub struct SessionFailedPayload {
 pub struct MemoryPinnedPayload {
     pub memory_id: MemoryId,
     pub content: String,
+    pub session_id: Option<SessionId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -102,6 +103,7 @@ pub struct MemorySynthesizedPayload {
     pub content: String,
     pub source_memory_ids: Vec<MemoryId>,
     pub level: u32,
+    pub project_id: ProjectId,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

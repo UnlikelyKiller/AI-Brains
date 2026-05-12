@@ -33,6 +33,7 @@ fn test_fts_indexes_memory() {
     let payload = Payload::MemoryPinned(MemoryPinnedPayload {
         memory_id,
         content: "The specific architectural nuance of event sourcing is immutability.".to_string(),
+        session_id: None,
     });
 
     let envelope = EventBuilder::new(

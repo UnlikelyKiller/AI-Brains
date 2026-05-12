@@ -1,4 +1,6 @@
 use crate::context::AppContext;
+use ai_brains_core::ids::ProjectId;
+use std::str::FromStr;
 use std::sync::Arc;
 
 pub fn run(
@@ -51,7 +53,12 @@ pub fn run(
 
     println!("Starting nightly intelligence sweep...");
     let tokio_runtime = tokio::runtime::Runtime::new()?;
-    let count = tokio_runtime.block_on(service.run_nightly())?;
+    let project_id = std::env::var("AI_BRAINS_PROJECT_ID")
+        .ok()
+        .and_then(|s| ProjectId::from_str(&s).ok())
+        .unwrap_or_default();
+
+    let count = tokio_runtime.block_on(service.run_nightly(project_id))?;
     println!("Nightly sweep completed. Processed {} sessions.", count);
 
     Ok(())

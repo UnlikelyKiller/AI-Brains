@@ -41,7 +41,10 @@ impl Projection for TurnProjection {
 
         tx.execute(
             "INSERT INTO memory_projection (memory_id, session_id, content, privacy, status, level, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             ON CONFLICT(memory_id) DO UPDATE SET
+                content = excluded.content,
+                updated_at = excluded.updated_at",
             rusqlite::params![
                 memory_id.to_string(),
                 session_id,

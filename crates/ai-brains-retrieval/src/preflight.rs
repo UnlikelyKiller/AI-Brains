@@ -29,18 +29,18 @@ pub fn build_preflight(
 
     // --- Onboarding & Safety Section (Max 15% of budget) ---
     let onboarding_budget = (max_words * 15) / 100;
-    let mut safety_lines = Vec::new();
+    let mut safety_entries: Vec<(String, String)> = Vec::new(); // (content, updated_at)
     let mut safety_ids: HashSet<String> = HashSet::new();
 
     let safety_sql = if project_id_str.is_some() {
-        "SELECT m.memory_id, m.content FROM memory_projection m
-         INNER JOIN session_projection s ON m.session_id = s.session_id
+        "SELECT m.memory_id, m.content, m.updated_at FROM memory_projection m
+         LEFT JOIN session_projection s ON m.session_id = s.session_id
          WHERE (m.content LIKE '%CONSTRAINT:%' OR m.content LIKE '%INVARIANT:%' OR m.content LIKE '%HOTSPOT:%')
          AND m.status = 'pinned'
-         AND s.project_id = ?1
+         AND (s.project_id = ?1 OR m.project_id = ?1)
          ORDER BY m.updated_at DESC LIMIT 10"
     } else {
-        "SELECT memory_id, content FROM memory_projection
+        "SELECT memory_id, content, updated_at FROM memory_projection
          WHERE (content LIKE '%CONSTRAINT:%' OR content LIKE '%INVARIANT:%' OR content LIKE '%HOTSPOT:%')
          AND status = 'pinned'
          ORDER BY updated_at DESC LIMIT 10"
@@ -48,21 +48,26 @@ pub fn build_preflight(
 
     let mut safety_stmt = conn.prepare(safety_sql)?;
     let mut safety_rows = if let Some(ref pid) = project_id_str {
-        safety_stmt.query(rusqlite::params![pid])?
+        safety_stmt.query(rusqlite::params![pid, pid])?
     } else {
         safety_stmt.query([])?
     };
     while let Some(row) = safety_rows.next()? {
         let memory_id: String = row.get(0)?;
         let content: String = row.get(1)?;
+        let updated_at: String = row.get(2)?;
         safety_ids.insert(memory_id);
-        safety_lines.push(strip_ansi(&content));
+        safety_entries.push((strip_ansi(&content), updated_at));
     }
 
-    if !safety_lines.is_empty() {
+    // Deduplicate hotspot entries by file path: keep only the most recent score per path.
+    // ORDER BY updated_at DESC ensures first occurrence is the freshest.
+    let safety_entries = dedup_hotspots(safety_entries);
+
+    if !safety_entries.is_empty() {
         let safety_text = format!(
             "--- Repository Bearings & Safety ---\n{}",
-            safety_lines.join("\n\n")
+            safety_entries.join("\n\n")
         );
         sections.push(trim_to_word_budget(&safety_text, onboarding_budget));
     }
@@ -81,14 +86,14 @@ pub fn build_preflight(
 
     // --- General Memory Index (scoped to current project when project_id is known) ---
     let index_sql = if project_id_str.is_some() {
-        "SELECT m.memory_id, m.content, m.privacy
+        "SELECT m.memory_id, m.content, m.privacy, m.updated_at
          FROM memory_projection m
-         INNER JOIN session_projection s ON m.session_id = s.session_id
+         LEFT JOIN session_projection s ON m.session_id = s.session_id
          WHERE m.status = 'pinned'
-         AND s.project_id = ?1
+         AND (s.project_id = ?1 OR m.project_id = ?1)
          ORDER BY m.updated_at DESC"
     } else {
-        "SELECT memory_id, content, privacy
+        "SELECT memory_id, content, privacy, updated_at
          FROM memory_projection
          WHERE status = 'pinned'
          ORDER BY updated_at DESC"
@@ -96,11 +101,11 @@ pub fn build_preflight(
 
     let mut stmt = conn.prepare(index_sql)?;
     let mut rows = if let Some(ref pid) = project_id_str {
-        stmt.query(rusqlite::params![pid])?
+        stmt.query(rusqlite::params![pid, pid])?
     } else {
         stmt.query([])?
     };
-    let mut collected = Vec::new();
+    let mut collected: Vec<(String, String)> = Vec::new(); // (content, updated_at)
 
     while let Some(row) = rows.next()? {
         let memory_id: String = row.get(0)?;
@@ -116,39 +121,53 @@ pub fn build_preflight(
         }
 
         let content: String = row.get(1)?;
+        let updated_at: String = row.get(3)?;
         let content = strip_ansi(&content);
         let candidate = if collected.is_empty() {
             content.clone()
         } else {
-            format!("{}\n\n{}", collected.join("\n\n"), content)
+            let mut parts: Vec<String> = collected.iter().map(|(c, _)| c.clone()).collect();
+            parts.push(content.clone());
+            parts.join("\n\n")
         };
 
         if word_count(&candidate) > max_words {
             break;
         }
-        collected.push(content);
+        collected.push((content, updated_at));
     }
 
     if !collected.is_empty() {
-        // 1. Build the index section
+        // 1. Build the index section with relative timestamps
         let mut index_lines = vec!["--- Memory Index (Briefing) ---".to_string()];
-        for (i, content) in collected.iter().enumerate() {
+        for (i, (content, updated_at)) in collected.iter().enumerate() {
             let first_line = content.lines().next().unwrap_or("Untitled Memory");
             let summary = if first_line.len() > 60 {
                 format!("{}...", &first_line[..57])
             } else {
                 first_line.to_string()
             };
-            index_lines.push(format!("{}. {}", i + 1, summary));
+            let ts = relative_timestamp(updated_at);
+            if ts.is_empty() {
+                index_lines.push(format!("{}. {}", i + 1, summary));
+            } else {
+                index_lines.push(format!("{}. {} -- {}", i + 1, summary, ts));
+            }
         }
         let index_text = index_lines.join("\n");
 
         // 2. Build the detailed section (only the most recent memory)
         let mut detailed_text = String::new();
-        if let Some(most_recent) = collected.first() {
+        if let Some((most_recent, updated_at)) = collected.first() {
+            let ts = relative_timestamp(updated_at);
+            let header = if ts.is_empty() {
+                "--- Most Recent Memory ---".to_string()
+            } else {
+                format!("--- Most Recent Memory (pinned {}) ---", ts)
+            };
             detailed_text = format!(
-                "--- Most Recent Memory ---\n\n{}\n\n(Use 'recall' to fetch details for other index items)",
-                most_recent
+                "{}\n\n{}\n\n(Use 'recall' to fetch details for other index items)",
+                header, most_recent
             );
         }
 
@@ -171,4 +190,80 @@ pub fn build_preflight(
         word_count: word_count(&text),
         text,
     })
+}
+
+/// Extract file paths from hotspot table content (lines containing `| crates/` or similar).
+fn extract_hotspot_paths(content: &str) -> Vec<String> {
+    content
+        .lines()
+        .filter(|line| {
+            line.contains('|') && (line.contains("crates/") || line.contains("scripts/"))
+        })
+        .filter_map(|line| {
+            // Last pipe-delimited field is the file path
+            let parts: Vec<&str> = line.split('|').collect();
+            parts.last().map(|s| s.trim().to_string())
+        })
+        .filter(|p| !p.is_empty() && !p.starts_with('-') && !p.starts_with('=') && p != "File Path")
+        .collect()
+}
+
+/// Deduplicate hotspot entries by keeping only the first (most recent) entry per file path.
+/// Non-hotspot entries (CONSTRAINT, INVARIANT) pass through unchanged.
+fn dedup_hotspots(entries: Vec<(String, String)>) -> Vec<String> {
+    let mut seen_paths: HashSet<String> = HashSet::new();
+    let mut result = Vec::new();
+
+    for (content, _updated_at) in &entries {
+        if content.starts_with("HOTSPOT:") {
+            let paths = extract_hotspot_paths(content);
+            if paths.is_empty() {
+                // Can't parse paths — keep the entry as-is
+                result.push(content.clone());
+                continue;
+            }
+            let new_paths: Vec<String> = paths
+                .into_iter()
+                .filter(|p| seen_paths.insert(p.clone()))
+                .collect();
+            if !new_paths.is_empty() {
+                // Rebuild the entry with only the new paths to avoid noise
+                result.push(content.clone());
+            }
+            // If all paths already seen, skip this entry entirely
+        } else {
+            // CONSTRAINTS, INVARIANTS, etc. — always keep
+            result.push(content.clone());
+        }
+    }
+
+    result
+}
+
+/// Compute a human-readable relative timestamp from an RFC 3339 string.
+fn relative_timestamp(rfc3339_str: &str) -> String {
+    let updated = match chrono::DateTime::parse_from_rfc3339(rfc3339_str) {
+        Ok(dt) => dt.with_timezone(&chrono::Utc),
+        Err(_) => return String::new(),
+    };
+    let now = chrono::Utc::now();
+    let duration = now.signed_duration_since(updated);
+
+    if duration.num_seconds() < 60 {
+        "just now".to_string()
+    } else if duration.num_minutes() < 60 {
+        format!("{} min ago", duration.num_minutes())
+    } else if duration.num_hours() < 24 {
+        format!("{} hr ago", duration.num_hours())
+    } else if duration.num_days() < 7 {
+        format!(
+            "{} day{} ago",
+            duration.num_days(),
+            if duration.num_days() == 1 { "" } else { "s" }
+        )
+    } else if duration.num_days() < 30 {
+        format!("{} wk ago", duration.num_days() / 7)
+    } else {
+        format!("{} mo ago", duration.num_days() / 30)
+    }
 }

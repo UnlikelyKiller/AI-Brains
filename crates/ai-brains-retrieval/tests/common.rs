@@ -34,6 +34,7 @@ pub fn store_with_memory(
     let payload = Payload::MemoryPinned(MemoryPinnedPayload {
         memory_id,
         content: content.to_string(),
+        session_id: None,
     });
     let envelope = EventBuilder::new(
         AggregateType::Memory,

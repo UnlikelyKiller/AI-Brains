@@ -168,7 +168,7 @@ async fn test_raptor_synthesis() -> Result<(), Box<dyn std::error::Error>> {
         mock_provider.clone(),
         mock_provider,
     );
-    let count = nightly.run_nightly().await?;
+    let count = nightly.run_nightly(ProjectId::new()).await?;
     assert_eq!(count, 2);
 
     // 4. Verify Projections
@@ -355,7 +355,7 @@ async fn test_crag_rejects_unsupported_synthesis() -> Result<(), Box<dyn std::er
         mock_provider.clone(),
         mock_provider,
     );
-    nightly.run_nightly().await?;
+    nightly.run_nightly(ProjectId::new()).await?;
 
     // Verify synthesis count is 0
     let conn = vault.lock()?;

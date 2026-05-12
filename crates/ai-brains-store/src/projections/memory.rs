@@ -19,14 +19,16 @@ impl Projection for MemoryProjection {
         match &envelope.payload {
             Payload::MemoryPinned(p) => {
                 tx.execute(
-                    "INSERT INTO memory_projection (memory_id, content, privacy, status, level, created_at, updated_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?)
+                    "INSERT INTO memory_projection (memory_id, session_id, content, privacy, status, level, created_at, updated_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                      ON CONFLICT(memory_id) DO UPDATE SET
                         content = excluded.content,
+                        session_id = COALESCE(excluded.session_id, memory_projection.session_id),
                         status = excluded.status,
                         updated_at = excluded.updated_at",
                     rusqlite::params![
                         p.memory_id.to_string(),
+                        p.session_id.as_ref().map(|s| s.to_string()),
                         p.content,
                         privacy,
                         "pinned",
@@ -38,13 +40,15 @@ impl Projection for MemoryProjection {
             }
             Payload::SessionSummaryCreated(p) => {
                 tx.execute(
-                    "INSERT INTO memory_projection (memory_id, content, privacy, status, level, created_at, updated_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?)
+                    "INSERT INTO memory_projection (memory_id, session_id, content, privacy, status, level, created_at, updated_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                      ON CONFLICT(memory_id) DO UPDATE SET
                         content = excluded.content,
+                        session_id = COALESCE(excluded.session_id, memory_projection.session_id),
                         updated_at = excluded.updated_at",
                     rusqlite::params![
                         p.memory_id.to_string(),
+                        p.session_id.to_string(),
                         p.summary,
                         privacy,
                         "pinned",
@@ -56,14 +60,15 @@ impl Projection for MemoryProjection {
             }
             Payload::MemorySynthesized(p) => {
                 tx.execute(
-                    "INSERT INTO memory_projection (memory_id, content, privacy, status, level, created_at, updated_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?)
+                    "INSERT INTO memory_projection (memory_id, project_id, content, privacy, status, level, created_at, updated_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                      ON CONFLICT(memory_id) DO UPDATE SET
                         content = excluded.content,
                         level = excluded.level,
                         updated_at = excluded.updated_at",
                     rusqlite::params![
                         p.memory_id.to_string(),
+                        p.project_id.to_string(),
                         p.content,
                         privacy,
                         "pinned",

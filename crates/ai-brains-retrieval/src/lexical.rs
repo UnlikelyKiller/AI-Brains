@@ -32,8 +32,10 @@ pub fn lexical_search(
     }
 
     if let Some(pid) = project_id {
-        sql.push_str(" AND sp.project_id = ?");
-        params_vec.push(pid.to_string().into());
+        sql.push_str(" AND (sp.project_id = ? OR mp.project_id = ?)");
+        let pid_str = pid.to_string();
+        params_vec.push(pid_str.clone().into());
+        params_vec.push(pid_str.into());
     }
 
     sql.push_str(" ORDER BY rank");

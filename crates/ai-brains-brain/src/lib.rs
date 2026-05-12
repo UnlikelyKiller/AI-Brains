@@ -1,4 +1,4 @@
-use ai_brains_core::ids::{MemoryId, SessionId};
+use ai_brains_core::ids::{MemoryId, ProjectId, SessionId};
 use ai_brains_events::{Payload, SessionSummaryCreatedPayload};
 use ai_brains_models::{CompletionRequest, ModelProvider, TokenizeRequest};
 use ai_brains_store::{EventStore, QueryStore};
@@ -36,7 +36,10 @@ impl AggregatedLearningsService {
         }
     }
 
-    pub async fn run_cross_agent_synthesis(&self) -> Result<usize, Box<dyn std::error::Error>> {
+    pub async fn run_cross_agent_synthesis(
+        &self,
+        project_id: ProjectId,
+    ) -> Result<usize, Box<dyn std::error::Error>> {
         tracing::info!("Starting Phase 15: Cross-Agent Memory Synthesis (Level 2)");
         let synthesizer = MemorySynthesizer::new(
             self.query_store.clone(),
@@ -45,7 +48,7 @@ impl AggregatedLearningsService {
         );
 
         // Synthesize Level 1 -> Level 2
-        synthesizer.run_synthesis(2).await
+        synthesizer.run_synthesis(2, project_id).await
     }
 }
 
@@ -71,7 +74,10 @@ impl NightlyService {
         }
     }
 
-    pub async fn run_nightly(&self) -> Result<usize, Box<dyn std::error::Error>> {
+    pub async fn run_nightly(
+        &self,
+        project_id: ProjectId,
+    ) -> Result<usize, Box<dyn std::error::Error>> {
         let unsummarized = self.query_store.get_unsummarized_sessions()?;
         let mut count = 0;
 
@@ -89,7 +95,7 @@ impl NightlyService {
             self.event_store.clone(),
             self.completion_provider.clone(),
         );
-        if let Err(e) = synthesizer.run_synthesis(1).await {
+        if let Err(e) = synthesizer.run_synthesis(1, project_id).await {
             tracing::error!("Memory synthesis failed: {}", e);
         }
 
@@ -105,7 +111,7 @@ impl NightlyService {
             self.event_store.clone(),
             self.completion_provider.clone(),
         );
-        if let Err(e) = cross_agent.run_cross_agent_synthesis().await {
+        if let Err(e) = cross_agent.run_cross_agent_synthesis(project_id).await {
             tracing::error!("Cross-agent synthesis failed: {}", e);
         }
 

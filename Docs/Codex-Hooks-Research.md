@@ -4,7 +4,7 @@ This document summarizes the research into the Codex hook system and how to impl
 
 ## Summary of Findings
 
-Codex utilizes a robust hook system that discovery hooks from `hooks.json` or inline `[hooks]` tables in `config.toml`. It is particularly effective for turn-level capture and context injection.
+Codex discovers hooks from `hooks.json` files next to active config layers or from inline `[hooks]` tables in `config.toml`. The current hook schema uses PascalCase event keys, and hook scripts receive one JSON object on `stdin`.
 
 ### Global Configuration Locations
 
@@ -15,20 +15,22 @@ Codex utilizes a robust hook system that discovery hooks from `hooks.json` or in
 
 ### Critical Lifecycle Events for AI-Brains
 
-AI-Brains uses three turn-scoped events for reliable memory synchronization:
+AI-Brains uses three events for memory synchronization:
 
 | Event | When It Fires | AI-Brains Action |
 | :--- | :--- | :--- |
-| **`session_start`** | Startup/Resume | **Preflight**: Injects initial memory context. |
-| **`user_prompt_submit`** | Before every prompt | **Ingest**: Captures the user's intent immediately. |
-| **`stop`** | End of turn | **Ingest**: Captures the final assistant response. |
+| **`SessionStart`** | Startup, resume, or clear-created session | **Preflight**: Injects initial memory context through `hookSpecificOutput.additionalContext`. |
+| **`UserPromptSubmit`** | Before every prompt | **Ingest**: Captures the user's intent immediately. |
+| **`Stop`** | End of turn | **Ingest**: Captures the final assistant response. |
 
 ### Technical Nuances
 
-*   **Concurrency**: Multiple matching hooks run concurrently.
-*   **Silence**: Similar to other CLI hooks, Codex expects valid JSON on `stdout`.
-*   **Feature Flag**: Hooks must be explicitly enabled in `config.toml` via `hooks = true`.
-*   **Matchers**: Matchers use Regular Expressions for tool events and Exact Strings for lifecycle events.
+*   **Concurrency**: Multiple matching command hooks for the same event run concurrently.
+*   **Stdout protocol**: JSON on `stdout` is parsed as hook output. `SessionStart` and `UserPromptSubmit` can also use plain text as extra developer context, but AI-Brains emits JSON for consistency.
+*   **Feature Flag**: Codex CLI v0.130.0 expects `[features].hooks = true`. The public hooks docs still show `codex_hooks = true`, but the local CLI emits a deprecation warning for `codex_hooks` and says to use `hooks`.
+*   **Matchers**: `SessionStart` matchers apply to the start source (`startup`, `resume`, `clear`). `UserPromptSubmit` and `Stop` ignore matchers.
+*   **Event casing**: Current Codex uses `SessionStart`, `UserPromptSubmit`, and `Stop` as `hooks.json` keys. Older snake_case keys do not match current documentation.
+*   **PowerShell quoting**: Literal triple-backtick strings must be single-quoted in PowerShell because the backtick is PowerShell's escape character.
 
 ---
 
@@ -56,9 +58,9 @@ Create or update `C:\Users\RyanB\.codex\hooks.json`:
 ```json
 {
   "hooks": {
-    "session_start": [
+    "SessionStart": [
       {
-        "matcher": "*",
+        "matcher": "startup|resume|clear",
         "hooks": [
           {
             "name": "ai-brains-preflight",
@@ -70,7 +72,7 @@ Create or update `C:\Users\RyanB\.codex\hooks.json`:
         ]
       }
     ],
-    "user_prompt_submit": [
+    "UserPromptSubmit": [
       {
         "hooks": [
           {
@@ -83,7 +85,7 @@ Create or update `C:\Users\RyanB\.codex\hooks.json`:
         ]
       }
     ],
-    "stop": [
+    "Stop": [
       {
         "hooks": [
           {
@@ -100,5 +102,13 @@ Create or update `C:\Users\RyanB\.codex\hooks.json`:
 }
 ```
 
+### Compatibility Note
+
+`target-codex-hook.ps1` normalizes the old snake_case event names to the current PascalCase names before dispatching. This keeps manual smoke tests or stale installations from failing silently, but the installed Codex `hooks.json` should still use the current PascalCase keys.
+
+### Documentation Drift Note
+
+As of Codex CLI v0.130.0, startup warns that `[features].codex_hooks` is deprecated and should be replaced by `[features].hooks`. The OpenAI hooks/config docs still mention `codex_hooks`; prefer the installed CLI warning for the active runtime until the docs catch up.
+
 ---
-*Research conducted on: 2026-05-11*
+*Research updated on: 2026-05-12*

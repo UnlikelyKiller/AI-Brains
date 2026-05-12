@@ -58,6 +58,7 @@ async fn test_cross_agent_synthesis_level_2() -> Result<(), Box<dyn std::error::
         content: "Level 0 Memory A1".to_string(),
         source_memory_ids: vec![],
         level: 0,
+        project_id,
     }))?;
     event_store.append_event(&event_0a1)?;
 
@@ -75,6 +76,7 @@ async fn test_cross_agent_synthesis_level_2() -> Result<(), Box<dyn std::error::
         content: "Level 0 Memory A2".to_string(),
         source_memory_ids: vec![],
         level: 0,
+        project_id,
     }))?;
     event_store.append_event(&event_0a2)?;
 
@@ -92,6 +94,7 @@ async fn test_cross_agent_synthesis_level_2() -> Result<(), Box<dyn std::error::
         content: "Synthesis A: Focus on auth layer security.".to_string(),
         source_memory_ids: vec![memory_0a1_id, memory_0a2_id],
         level: 1,
+        project_id,
     }))?;
     event_store.append_event(&event_1a)?;
 
@@ -109,6 +112,7 @@ async fn test_cross_agent_synthesis_level_2() -> Result<(), Box<dyn std::error::
         content: "Level 0 Memory B1".to_string(),
         source_memory_ids: vec![],
         level: 0,
+        project_id,
     }))?;
     event_store.append_event(&event_0b1)?;
 
@@ -126,6 +130,7 @@ async fn test_cross_agent_synthesis_level_2() -> Result<(), Box<dyn std::error::
         content: "Level 0 Memory B2".to_string(),
         source_memory_ids: vec![],
         level: 0,
+        project_id,
     }))?;
     event_store.append_event(&event_0b2)?;
 
@@ -143,6 +148,7 @@ async fn test_cross_agent_synthesis_level_2() -> Result<(), Box<dyn std::error::
         content: "Synthesis B: Focus on auth layer performance.".to_string(),
         source_memory_ids: vec![memory_0b1_id, memory_0b2_id],
         level: 1,
+        project_id,
     }))?;
     event_store.append_event(&event_1b)?;
 
@@ -161,7 +167,7 @@ async fn test_cross_agent_synthesis_level_2() -> Result<(), Box<dyn std::error::
     // 3. Run Aggregated Learnings Service
     let cross_agent =
         AggregatedLearningsService::new(query_store, event_store.clone(), mock_provider);
-    let count = cross_agent.run_cross_agent_synthesis().await?;
+    let count = cross_agent.run_cross_agent_synthesis(project_id).await?;
     assert_eq!(count, 1);
 
     // 4. Verify Projections

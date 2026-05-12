@@ -132,7 +132,7 @@ async fn test_nightly_summarizes_large_session_via_chunking(
         mock_provider.clone(),
         mock_provider,
     );
-    let summarized_count = nightly.run_nightly().await?;
+    let summarized_count = nightly.run_nightly(ProjectId::new()).await?;
 
     assert_eq!(summarized_count, 1);
 

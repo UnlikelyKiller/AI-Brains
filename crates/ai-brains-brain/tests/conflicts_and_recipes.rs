@@ -56,6 +56,7 @@ async fn test_conflict_and_recipe_detection() -> Result<(), Box<dyn std::error::
     .build(Payload::MemoryPinned(MemoryPinnedPayload {
         memory_id,
         content: "Always use port 8080 for the dev server.".to_string(),
+        session_id: None,
     }))?;
     event_store.append_event(&mem_event)?;
 
@@ -132,7 +133,7 @@ async fn test_conflict_and_recipe_detection() -> Result<(), Box<dyn std::error::
         mock_provider.clone(),
         mock_provider,
     );
-    let count = nightly.run_nightly().await?;
+    let count = nightly.run_nightly(project_id).await?;
     assert_eq!(count, 1);
 
     // 5. Verify Projections
