@@ -27,7 +27,7 @@ AI-Brains uses three turn-scoped events for reliable memory synchronization:
 
 *   **Concurrency**: Multiple matching hooks run concurrently.
 *   **Silence**: Similar to other CLI hooks, Codex expects valid JSON on `stdout`.
-*   **Feature Flag**: Hooks must be explicitly enabled in `config.toml` via `codex_hooks = true`.
+*   **Feature Flag**: Hooks must be explicitly enabled in `config.toml` via `hooks = true`.
 *   **Matchers**: Matchers use Regular Expressions for tool events and Exact Strings for lifecycle events.
 
 ---
@@ -47,7 +47,7 @@ Deploy the Codex-specific adapter script.
 Update `C:\Users\RyanB\.codex\config.toml`:
 ```toml
 [features]
-codex_hooks = true
+hooks = true
 ```
 
 #### 2. Register Hooks
