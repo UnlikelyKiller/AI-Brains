@@ -17,6 +17,10 @@ pub fn lexical_search(
 ) -> Result<Vec<RetrievalMemory>> {
     let conn = conn.lock()?;
 
+    // Sanitize FTS5 query: replace hyphens with spaces to prevent
+    // `word-project` being parsed as a column filter for column "project".
+    let sanitized = query.replace('-', " ");
+
     let mut sql = "SELECT mp.memory_id, mp.content, mp.privacy
          FROM memory_fts fts
          JOIN memory_projection mp ON mp.rowid = fts.rowid
@@ -24,7 +28,7 @@ pub fn lexical_search(
          WHERE memory_fts MATCH ? AND mp.status = 'pinned'"
         .to_string();
 
-    let mut params_vec: Vec<rusqlite::types::Value> = vec![query.to_string().into()];
+    let mut params_vec: Vec<rusqlite::types::Value> = vec![sanitized.into()];
 
     if let Some(sid) = session_id {
         sql.push_str(" AND mp.session_id = ?");
