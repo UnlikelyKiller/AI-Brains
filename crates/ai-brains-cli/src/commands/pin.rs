@@ -3,12 +3,14 @@ use ai_brains_capture::{CaptureContext, CaptureService};
 use ai_brains_contracts::ingest::IngestRequest;
 use ai_brains_core::ids::{HarnessId, ProjectId, SessionId, TurnId};
 use ai_brains_core::privacy::Privacy;
+use std::io::Read;
 
 pub fn run(
     ctx: &AppContext,
     content: String,
     role: String,
     privacy_str: String,
+    tags: Vec<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let project_id = std::env::var("AI_BRAINS_PROJECT_ID")
         .map_err(|_| "AI_BRAINS_PROJECT_ID not set. Run 'ai-brains context' first.")?
@@ -31,13 +33,21 @@ pub fn run(
         _ => Privacy::LocalOnly,
     };
 
+    // Embed tags in content as a prefix for backward compat
+    let final_content = if tags.is_empty() {
+        content
+    } else {
+        format!("TAGS: {}\n{}", tags.join(", "), content)
+    };
+
+    let turn_id = TurnId::new();
     let request = IngestRequest {
         session_id,
         project_id,
         harness_id,
-        turn_id: TurnId::new(),
+        turn_id,
         role,
-        content,
+        content: final_content,
         thinking: None,
         privacy,
     };
@@ -68,12 +78,36 @@ pub fn run(
         return Err(format!("Failed to auto-initialize context: {}", err).into());
     }
 
-    service.ingest_request(request, capture_context, &mut sink)?;
+    let outcome = service.ingest_request(request, capture_context, &mut sink)?;
 
     if let Some(err) = sink.last_error {
         return Err(format!("Failed to pin memory: {}", err).into());
     }
 
-    println!("Memory successfully pinned to vault.");
+    // The memory_id is derived from the turn_id in the projection
+    // Use the first event's ID or the turn_id
+    let memory_id = outcome
+        .events
+        .first()
+        .map(|e| e.event_id.to_string())
+        .unwrap_or_else(|| turn_id.to_string());
+
+    println!("Memory {} successfully pinned to vault.", memory_id);
     Ok(())
+}
+
+/// Read content from stdin instead of a positional argument
+pub fn run_stdin(
+    ctx: &AppContext,
+    role: String,
+    privacy_str: String,
+    tags: Vec<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut input = String::new();
+    std::io::stdin().read_to_string(&mut input)?;
+    let content = input.trim().to_string();
+    if content.is_empty() {
+        return Err("stdin content is empty".into());
+    }
+    run(ctx, content, role, privacy_str, tags)
 }

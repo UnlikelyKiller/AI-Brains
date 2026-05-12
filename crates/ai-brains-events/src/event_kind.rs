@@ -22,6 +22,7 @@ pub enum EventKind {
     // Memory
     MemoryPinned,
     MemoryForgotten,
+    MemoryRestored,
     PrivacyEscalated,
 
     // Background

@@ -48,20 +48,29 @@ pub struct AntigravityTurn {
 
 /// Discover Antigravity brain directories containing overview.txt files.
 /// Scans ~/.gemini/antigravity/brain/ for subdirectories with
-/// .system_generated/logs/overview.txt.
+/// .system_generated/logs/overview.txt. Also scans WSL paths.
 pub fn discover_sessions() -> Result<Vec<PathBuf>> {
-    let home = dirs::home_dir().ok_or(AdapterError::Other(
-        "Cannot determine home directory".to_string(),
-    ))?;
-    let brain_dir = home.join(".gemini").join("antigravity").join("brain");
+    let mut all_sessions = Vec::new();
 
-    if !brain_dir.exists() {
-        return Ok(Vec::new());
+    // Windows-side Antigravity
+    if let Some(home) = dirs::home_dir() {
+        let windows_brain = home.join(".gemini").join("antigravity").join("brain");
+        if windows_brain.exists() {
+            scan_brain_dir(&windows_brain, &mut all_sessions)?;
+        }
     }
 
-    let mut sessions = Vec::new();
-    let entries = std::fs::read_dir(&brain_dir)?;
+    // WSL-side Antigravity (Ubuntu)
+    let wsl_brain = PathBuf::from(r"\\wsl$\Ubuntu\home\ryan\.gemini\antigravity\brain");
+    if wsl_brain.exists() {
+        scan_brain_dir(&wsl_brain, &mut all_sessions)?;
+    }
 
+    Ok(all_sessions)
+}
+
+fn scan_brain_dir(brain_dir: &Path, sessions: &mut Vec<PathBuf>) -> Result<()> {
+    let entries = std::fs::read_dir(brain_dir)?;
     for entry in entries {
         let entry = entry?;
         let path = entry.path();
@@ -76,8 +85,7 @@ pub fn discover_sessions() -> Result<Vec<PathBuf>> {
             sessions.push(overview);
         }
     }
-
-    Ok(sessions)
+    Ok(())
 }
 
 /// Filter sessions to those modified within the last N days.

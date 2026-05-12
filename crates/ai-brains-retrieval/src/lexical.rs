@@ -3,10 +3,11 @@ use crate::privacy_filter::is_injectable_privacy;
 use ai_brains_store::VaultConnection;
 use rusqlite::params_from_iter;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct RetrievalMemory {
     pub memory_id: String,
     pub content: String,
+    pub score: Option<f64>,
 }
 
 pub fn lexical_search(
@@ -17,11 +18,11 @@ pub fn lexical_search(
 ) -> Result<Vec<RetrievalMemory>> {
     let conn = conn.lock()?;
 
-    // Sanitize FTS5 query: replace hyphens with spaces to prevent
-    // `word-project` being parsed as a column filter for column "project".
-    let sanitized = query.replace('-', " ");
+    // Sanitize FTS5 query: replace hyphens and colons with spaces to prevent
+    // `word-project` or `word:` being parsed as column filters.
+    let sanitized = query.replace(['-', ':'], " ");
 
-    let mut sql = "SELECT mp.memory_id, mp.content, mp.privacy
+    let mut sql = "SELECT mp.memory_id, mp.content, mp.privacy, fts.rank
          FROM memory_fts fts
          JOIN memory_projection mp ON mp.rowid = fts.rowid
          LEFT JOIN session_projection sp ON mp.session_id = sp.session_id
@@ -54,6 +55,7 @@ pub fn lexical_search(
             results.push(RetrievalMemory {
                 memory_id: row.get(0)?,
                 content: row.get(1)?,
+                score: row.get(3)?,
             });
         }
     }

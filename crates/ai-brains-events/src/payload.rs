@@ -65,6 +65,11 @@ pub struct MemoryForgottenPayload {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MemoryRestoredPayload {
+    pub memory_id: MemoryId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PrivacyEscalatedPayload {
     pub aggregate_id: uuid::Uuid,
 }
@@ -120,6 +125,7 @@ pub enum Payload {
     SessionFailed(SessionFailedPayload),
     MemoryPinned(MemoryPinnedPayload),
     MemoryForgotten(MemoryForgottenPayload),
+    MemoryRestored(MemoryRestoredPayload),
     PrivacyEscalated(PrivacyEscalatedPayload),
     NightlyJobStarted(NightlyJobStartedPayload),
     SessionSummaryCreated(SessionSummaryCreatedPayload),

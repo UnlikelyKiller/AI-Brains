@@ -65,9 +65,18 @@ pub fn build_preflight(
     let safety_entries = dedup_hotspots(safety_entries);
 
     if !safety_entries.is_empty() {
+        let cleaned: Vec<String> = safety_entries
+            .iter()
+            .map(|entry| {
+                entry
+                    .strip_prefix("ASSISTANT: ")
+                    .unwrap_or(entry)
+                    .to_string()
+            })
+            .collect();
         let safety_text = format!(
             "--- Repository Bearings & Safety ---\n{}",
-            safety_entries.join("\n\n")
+            cleaned.join("\n\n")
         );
         sections.push(trim_to_word_budget(&safety_text, onboarding_budget));
     }
@@ -187,18 +196,23 @@ pub fn build_preflight(
         }
         let index_text = index_lines.join("\n");
 
-        // 2. Build the detailed section (only the most recent memory)
+        // 2. Build the detailed section (top 3 most recent memories)
         let mut detailed_text = String::new();
-        if let Some((most_recent, updated_at)) = collected.first() {
-            let ts = relative_timestamp(updated_at);
-            let header = if ts.is_empty() {
-                "--- Most Recent Memory ---".to_string()
-            } else {
-                format!("--- Most Recent Memory (pinned {}) ---", ts)
-            };
+        let top_memories: Vec<_> = collected.iter().take(3).collect();
+        if !top_memories.is_empty() {
+            let mut detailed_entries = Vec::new();
+            for (content, updated_at) in &top_memories {
+                let ts = relative_timestamp(updated_at);
+                let entry = if ts.is_empty() {
+                    content.to_string()
+                } else {
+                    format!("({}) {}", ts, content)
+                };
+                detailed_entries.push(entry);
+            }
             detailed_text = format!(
-                "{}\n\n{}\n\n(Use 'recall' to fetch details for other index items)",
-                header, most_recent
+                "--- Most Recent Memories ---\n\n{}\n\n(Use 'recall' to fetch details for other index items)",
+                detailed_entries.join("\n\n")
             );
         }
 

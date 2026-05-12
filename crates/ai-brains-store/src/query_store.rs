@@ -1,7 +1,7 @@
 use crate::connection::VaultConnection;
 use crate::errors::Result;
 use crate::QueryStore;
-use ai_brains_core::ids::MemoryId;
+use ai_brains_core::ids::{MemoryId, ProjectId};
 use std::str::FromStr;
 
 impl QueryStore for VaultConnection {
@@ -119,5 +119,46 @@ impl QueryStore for VaultConnection {
             ],
         )?;
         Ok(())
+    }
+
+    fn list_forgotten_memories(
+        &self,
+        project_id: Option<ProjectId>,
+    ) -> Result<Vec<(String, String)>> {
+        let conn = self.lock()?;
+        let (sql, params): (String, Vec<String>) = if let Some(pid) = project_id {
+            let pid_str = pid.to_string();
+            (
+                "SELECT mp.memory_id, mp.content FROM memory_projection mp \
+                 LEFT JOIN session_projection sp ON mp.session_id = sp.session_id \
+                 WHERE mp.status = 'forgotten' AND (sp.project_id = ? OR mp.project_id = ?) \
+                 ORDER BY mp.updated_at DESC"
+                    .into(),
+                vec![pid_str.clone(), pid_str],
+            )
+        } else {
+            (
+                "SELECT memory_id, content FROM memory_projection \
+                 WHERE status = 'forgotten' ORDER BY updated_at DESC"
+                    .into(),
+                vec![],
+            )
+        };
+
+        let mut stmt = conn.prepare(&sql)?;
+        let param_refs: Vec<&dyn rusqlite::types::ToSql> = params
+            .iter()
+            .map(|p| p as &dyn rusqlite::types::ToSql)
+            .collect();
+        let rows = stmt.query_map(param_refs.as_slice(), |row| {
+            let id: String = row.get(0)?;
+            let content: String = row.get(1)?;
+            Ok((id, content))
+        })?;
+        let mut results = Vec::new();
+        for row in rows {
+            results.push(row?);
+        }
+        Ok(results)
     }
 }

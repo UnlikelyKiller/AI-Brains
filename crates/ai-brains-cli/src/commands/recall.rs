@@ -9,6 +9,7 @@ pub fn run(
     limit: usize,
     project_id: Option<ProjectId>,
     session_id: Option<SessionId>,
+    format: String,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Attempt to open graph vault next to the main vault
     #[cfg(feature = "graph")]
@@ -36,10 +37,30 @@ pub fn run(
                 memory_id: h.memory_id,
                 content: h.content,
                 source: h.source,
+                score: h.score,
             })
             .collect(),
     };
 
-    println!("{}", serde_json::to_string(&response)?);
+    if response.results.is_empty() {
+        eprintln!(
+            "No results for '{}'. Try shorter terms or check spelling.",
+            query
+        );
+    }
+
+    match format.as_str() {
+        "pretty" => {
+            for r in &response.results {
+                if let Some(s) = r.score {
+                    println!("[score={:.3}] {}: {}", s, r.memory_id, r.content);
+                } else {
+                    println!("{}: {}", r.memory_id, r.content);
+                }
+            }
+        }
+        _ => println!("{}", serde_json::to_string(&response)?),
+    }
+
     Ok(())
 }

@@ -3,11 +3,12 @@ use crate::lexical::lexical_search;
 use crate::GraphSearch;
 use ai_brains_store::VaultConnection;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct RecallHit {
     pub memory_id: String,
     pub content: String,
     pub source: String,
+    pub score: Option<f64>,
 }
 
 pub fn recall(
@@ -25,6 +26,7 @@ pub fn recall(
             memory_id: memory.memory_id,
             content: memory.content,
             source: "fts".to_string(),
+            score: memory.score,
         })
         .collect::<Vec<_>>();
 

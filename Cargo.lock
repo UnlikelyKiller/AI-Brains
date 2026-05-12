@@ -131,6 +131,7 @@ dependencies = [
  "dotenvy",
  "predicates",
  "rusqlite",
+ "serde",
  "serde_json",
  "strip-ansi-escapes",
  "tempfile",

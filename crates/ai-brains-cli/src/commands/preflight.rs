@@ -7,6 +7,7 @@ pub fn run(
     ctx: &AppContext,
     max_words: usize,
     project_id: Option<ProjectId>,
+    pretty: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Attempt to open graph vault next to the main vault
     #[cfg(feature = "graph")]
@@ -20,11 +21,14 @@ pub fn run(
 
     let context = build_preflight(&ctx.conn, graph_search.as_ref(), max_words, project_id)?;
 
-    let response = PreflightContextResponse {
-        text: context.text,
-        word_count: context.word_count,
-    };
-
-    println!("{}", serde_json::to_string(&response)?);
+    if pretty {
+        println!("{}", context.text);
+    } else {
+        let response = PreflightContextResponse {
+            text: context.text,
+            word_count: context.word_count,
+        };
+        println!("{}", serde_json::to_string(&response)?);
+    }
     Ok(())
 }

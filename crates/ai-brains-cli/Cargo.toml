@@ -20,6 +20,7 @@ ai-brains-crypto = { path = "../ai-brains-crypto" }
 ai-brains-models = { path = "../ai-brains-models" }
 ai-brains-graph = { path = "../ai-brains-graph", optional = true }
 serde_json.workspace = true
+serde.workspace = true
 clap = { version = "4.4", features = ["derive", "env"] }
 uuid = { workspace = true, features = ["v4", "v5"] }
 ai-brains-brain = { path = "../ai-brains-brain" }

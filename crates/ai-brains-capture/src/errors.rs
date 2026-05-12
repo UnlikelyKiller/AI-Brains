@@ -2,6 +2,18 @@ use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, CaptureError>;
 
+#[derive(Debug, Clone)]
+pub struct ValidationError {
+    pub field: String,
+    pub message: String,
+}
+
+impl std::fmt::Display for ValidationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.field, self.message)
+    }
+}
+
 #[derive(Debug, Error)]
 pub enum CaptureError {
     #[error("unsupported role: {0}")]
@@ -18,4 +30,6 @@ pub enum CaptureError {
     Json(#[from] serde_json::Error),
     #[error("git metadata failed: {0}")]
     Git(#[from] ai_brains_git::GitError),
+    #[error("validation failed: {}", .0.iter().map(|e| e.to_string()).collect::<Vec<_>>().join(", "))]
+    ValidationErrors(Vec<ValidationError>),
 }

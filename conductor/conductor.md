@@ -3,8 +3,8 @@
 ## Project Status
 **Status:** In Progress
 **Phase:** Phase 16 - Technical Debt & Refactoring [IN PROGRESS]
-**Current Track:** T35 - CLI Refactor
-**Verification:** Full Windows workspace gate is green as of 2026-05-10. Relational graph verified in workspace; cross-agent synthesis and harness hooks verified.
+**Current Track:** T36 - CLI Polish & Workflow
+**Verification:** Full Windows workspace gate is green as of 2026-05-12.
 
 ## Track Registry
 
@@ -42,6 +42,7 @@
 | T33 | Antigravity Conversation Import | **Completed** | Orchestrator | | Parse Antigravity logs, import turns into nightly, CLI subcommand. |
 | T34 | Resilient Summarization Truncation | **Completed** | Orchestrator | | Sequential chunking with context carryover for large sessions. |
 | T35 | CLI Refactor | **Completed** | Orchestrator | [T35](./tracks/trackT35/spec.md) | Decomposed main.rs, created AppContext, moved Antigravity import. |
+| T36 | CLI Polish & Workflow | **Completed** | Orchestrator | [T36](./tracks/track036-cli-polish-workflow.md) | Manual audit of 9 commands; fix FTS5, ChangeGuard JSON, session safety, cross-command workflow. |
 
 ## Current Verification Snapshot
 - `cargo fmt`: passes.

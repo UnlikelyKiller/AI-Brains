@@ -16,7 +16,7 @@ pub use errors::EventError;
 pub use event_kind::EventKind;
 pub use payload::{
     AssistantFinalRecordedPayload, ConflictDetectedPayload, MemoryForgottenPayload,
-    MemoryPinnedPayload, MemorySynthesizedPayload, Payload, ProjectRegisteredPayload,
-    RecipePromotedPayload, SessionCompletedPayload, SessionFailedPayload, SessionStartedPayload,
-    SessionSummaryCreatedPayload, UserPromptRecordedPayload,
+    MemoryPinnedPayload, MemoryRestoredPayload, MemorySynthesizedPayload, Payload,
+    ProjectRegisteredPayload, RecipePromotedPayload, SessionCompletedPayload, SessionFailedPayload,
+    SessionStartedPayload, SessionSummaryCreatedPayload, UserPromptRecordedPayload,
 };
