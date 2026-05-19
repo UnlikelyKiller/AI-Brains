@@ -63,7 +63,11 @@ impl<'a> FtsSearch<'a> {
 
 /// Unscoped search for backward compatibility in tests.
 /// Production code should use FtsSearch directly with a ProjectId.
-pub fn search_memory(conn: &Connection, query: &str) -> Result<Vec<SearchResult>> {
+pub fn search_memory(
+    conn: &Connection,
+    query: &str,
+    project_id: Option<Uuid>,
+) -> Result<Vec<SearchResult>> {
     let fts = FtsSearch::new(conn);
-    fts.search(query, None)
+    fts.search(query, project_id)
 }

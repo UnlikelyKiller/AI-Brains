@@ -84,7 +84,7 @@ impl NightlyService {
         let mut count = 0;
 
         for session_id in unsummarized {
-            if let Err(e) = self.summarize_session(&session_id).await {
+            if let Err(e) = self.summarize_session(&session_id, Some(project_id)).await {
                 tracing::error!("Failed to summarize session {}: {}", session_id, e);
                 continue;
             }
@@ -129,6 +129,7 @@ impl NightlyService {
     async fn summarize_session(
         &self,
         session_id_str: &str,
+        project_id: Option<ai_brains_core::ids::ProjectId>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let turns = self.query_store.get_session_turns(session_id_str)?;
         if turns.is_empty() {
@@ -175,19 +176,20 @@ impl NightlyService {
                 effective_budget
             );
             return self
-                .summarize_chunked(session_id_str, turns, effective_budget)
+                .summarize_chunked(session_id_str, project_id, turns, effective_budget)
                 .await;
         }
 
         let prompt = self.build_summary_prompt(&full_conversation, None);
         let response = self.execute_completion(prompt).await?;
-        self.persist_and_follow_up(session_id_str, response.text)
+        self.persist_and_follow_up(session_id_str, project_id, response.text)
             .await
     }
 
     async fn summarize_chunked(
         &self,
         session_id_str: &str,
+        project_id: Option<ai_brains_core::ids::ProjectId>,
         turns: Vec<(String, String)>,
         budget: usize,
     ) -> Result<(), Box<dyn std::error::Error>> {
@@ -229,7 +231,8 @@ impl NightlyService {
         }
 
         if let Some(json) = final_json {
-            self.persist_and_follow_up(session_id_str, json).await
+            self.persist_and_follow_up(session_id_str, project_id, json)
+                .await
         } else {
             Err("Failed to produce a final summary during chunking".into())
         }
@@ -312,6 +315,7 @@ impl NightlyService {
     async fn persist_and_follow_up(
         &self,
         session_id_str: &str,
+        project_id: Option<ProjectId>,
         summary_json: String,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let memory_id = MemoryId::new();
@@ -327,6 +331,7 @@ impl NightlyService {
         .build(Payload::SessionSummaryCreated(
             SessionSummaryCreatedPayload {
                 session_id,
+                project_id,
                 memory_id,
                 summary: summary_json.clone(),
             },

@@ -1,3 +1,4 @@
+use ai_brains_contracts::bridge::{BridgeDirection, BridgeRecord};
 use ai_brains_crypto::SqlCipherKey;
 use ai_brains_daemon_api::{DaemonRequest, DaemonResponse};
 use ai_brains_store::connection::VaultConnection;
@@ -6,6 +7,7 @@ use ai_brainsd::DaemonWriter;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+#[cfg(windows)]
 use tokio::net::windows::named_pipe::ServerOptions;
 
 #[tokio::main]
@@ -35,49 +37,80 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     conn.migrate()?;
 
     let event_store = Arc::new(SqliteEventStore::new(conn));
-    let writer = DaemonWriter::start(spool_dir, event_store).await?;
-    let pipe_name = r"\\.\pipe\aibrains-sync";
+    let writer = DaemonWriter::start(spool_dir, event_store.clone()).await?;
 
-    println!("AI-Brains Daemon started. Listening on {}", pipe_name);
+    #[cfg(windows)]
+    {
+        let pipe_name = r"\\.\pipe\aibrains-sync";
+        println!("AI-Brains Daemon started. Listening on {}", pipe_name);
 
-    loop {
-        let server = match ServerOptions::new()
-            .first_pipe_instance(false)
-            .create(pipe_name)
-        {
-            Ok(s) => s,
-            Err(e) => {
-                eprintln!("Failed to create named pipe instance: {}", e);
-                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+        loop {
+            let server = match ServerOptions::new()
+                .first_pipe_instance(false)
+                .create(pipe_name)
+            {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("Failed to create named pipe instance: {}", e);
+                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                    continue;
+                }
+            };
+
+            if let Err(e) = server.connect().await {
+                eprintln!("Failed to connect client: {}", e);
                 continue;
             }
-        };
 
-        if let Err(e) = server.connect().await {
-            eprintln!("Failed to connect client: {}", e);
-            continue;
+            let writer_clone = writer.clone();
+            tokio::spawn(async move {
+                if let Err(e) = handle_client(server, writer_clone).await {
+                    eprintln!("Error handling client: {}", e);
+                }
+            });
         }
+    }
 
-        let writer_clone = writer.clone();
-        tokio::spawn(async move {
-            if let Err(e) = handle_client(server, writer_clone).await {
-                eprintln!("Error handling client: {}", e);
+    #[cfg(not(windows))]
+    {
+        let socket_path = "/tmp/aibrains-sync.sock";
+        let _ = std::fs::remove_file(socket_path);
+
+        let listener = tokio::net::UnixListener::bind(socket_path)?;
+        println!(
+            "AI-Brains Daemon started. Listening on Unix socket: {}",
+            socket_path
+        );
+
+        loop {
+            match listener.accept().await {
+                Ok((stream, _addr)) => {
+                    let writer_clone = writer.clone();
+                    tokio::spawn(async move {
+                        if let Err(e) = handle_client(stream, writer_clone).await {
+                            eprintln!("Error handling client: {}", e);
+                        }
+                    });
+                }
+                Err(e) => {
+                    eprintln!("Failed to accept UDS connection: {}", e);
+                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                }
             }
-        });
+        }
     }
 }
 
-async fn handle_client(
-    mut server: tokio::net::windows::named_pipe::NamedPipeServer,
+#[allow(clippy::disallowed_methods)]
+async fn handle_client<S>(
+    mut server: S,
     writer: DaemonWriter,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>>
+where
+    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin,
+{
     let mut buffer = Vec::new();
     let mut chunk = vec![0u8; 4096];
-
-    // Simple robust read loop: read until connection is closed or we have a valid JSON
-    // Note: Named pipes on Windows can be tricky with EOF.
-    // For this bridge, we assume one request per connection for simplicity, or
-    // we would need a proper framing protocol.
 
     loop {
         let n = server.read(&mut chunk).await?;
@@ -86,21 +119,104 @@ async fn handle_client(
         }
         buffer.extend_from_slice(&chunk[..n]);
 
-        // Attempt to parse. If it fails, keep reading until EOF or valid.
-        if let Ok(request) = serde_json::from_slice::<DaemonRequest>(&buffer) {
-            match request {
-                DaemonRequest::Ingest(req) => {
-                    let resp = writer.ingest(req).await?;
-                    let payload = serde_json::to_vec(&DaemonResponse::Ingest(resp))?;
-                    server.write_all(&payload).await?;
+        if buffer.len() > 8 * 1024 * 1024 {
+            return Err("Buffer exceeded 8 MiB limit. Disconnecting.".into());
+        }
+
+        // Process newline-delimited JSON records
+        while let Some(pos) = buffer.iter().position(|&b| b == b'\n') {
+            let line_with_nl = buffer.drain(..pos + 1).collect::<Vec<u8>>();
+            let line = &line_with_nl[..line_with_nl.len() - 1];
+            if line.is_empty() {
+                continue;
+            }
+
+            let request = match serde_json::from_slice::<DaemonRequest>(line) {
+                Ok(request) => Some(request),
+                Err(_) => {
+                    // Try parsing as raw BridgeRecord directly
+                    match serde_json::from_slice::<ai_brains_contracts::bridge::BridgeRecord>(line)
+                    {
+                        Ok(record) => Some(DaemonRequest::Sync(record)),
+                        Err(e) => {
+                            eprintln!(
+                                "Failed to parse as either DaemonRequest or BridgeRecord: {}",
+                                e
+                            );
+                            None
+                        }
+                    }
                 }
-                DaemonRequest::Sync(record) => {
-                    writer.sync(record).await?;
-                    let payload = serde_json::to_vec(&DaemonResponse::Sync { success: true })?;
-                    server.write_all(&payload).await?;
+            };
+
+            if let Some(request) = request {
+                match request {
+                    DaemonRequest::Ingest(req) => {
+                        let resp = writer.ingest(req).await?;
+                        let mut payload = serde_json::to_vec(&DaemonResponse::Ingest(resp))?;
+                        payload.push(b'\n');
+                        server.write_all(&payload).await?;
+                    }
+                    DaemonRequest::Sync(record) => {
+                        if record.record_kind == "query" {
+                            let query_text = record
+                                .payload
+                                .get("text")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("");
+
+                            // Parse string IDs from interchange format for internal use.
+                            use std::str::FromStr;
+                            let project_id = ai_brains_core::ids::ProjectId::from_str(&record.project_id)
+                                .unwrap_or_else(|_| ai_brains_core::ids::ProjectId::new());
+                            let session_id = match &record.session_id {
+                                Some(s) => ai_brains_core::ids::SessionId::from_str(s)
+                                    .unwrap_or_else(|_| ai_brains_core::ids::SessionId::new()),
+                                None => ai_brains_core::ids::SessionId::new(),
+                            };
+
+                            let hits = writer
+                                .query_memories(query_text, project_id, session_id)
+                                .await?;
+
+                            let timestamp = chrono::Utc::now().to_rfc3339();
+
+                            for h in hits {
+                                let payload = serde_json::json!({
+                                    "type": "Insight",
+                                    "memory_id": h.memory_id,
+                                    "relevance": h.score.unwrap_or(1.0),
+                                    "content": h.content
+                                });
+
+                                let resp_record = BridgeRecord {
+                                    bridge_version: "0.2".to_string(),
+                                    direction: BridgeDirection::Outbound,
+                                    timestamp: timestamp.clone(),
+                                    parent_hash: None,
+                                    project_id: record.project_id.clone(),
+                                    session_id: record.session_id.clone(),
+                                    tx_id: None,
+                                    record_kind: "insight".to_string(),
+                                    payload,
+                                    privacy: ai_brains_core::privacy::Privacy::LocalOnly,
+                                };
+
+                                let mut payload = serde_json::to_vec(&resp_record)?;
+                                payload.push(b'\n');
+                                server.write_all(&payload).await?;
+                            }
+                            server.write_all(b"\n").await?;
+                        } else {
+                            writer.sync(record).await?;
+                            let mut payload =
+                                serde_json::to_vec(&DaemonResponse::Sync { success: true })?;
+                            payload.push(b'\n');
+                            server.write_all(&payload).await?;
+                        }
+                    }
                 }
             }
-            break; // Finished handling the request
         }
     }
 

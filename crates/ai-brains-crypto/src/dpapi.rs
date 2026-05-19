@@ -1,5 +1,5 @@
-#[cfg(windows)]
 use crate::errors::{CryptoError, Result};
+
 #[cfg(windows)]
 use windows::{
     core::PCWSTR,

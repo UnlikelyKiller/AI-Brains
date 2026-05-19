@@ -54,7 +54,7 @@ fn test_fts_indexes_memory() {
 
     // Search
     let conn_guard = store.connection().lock().unwrap();
-    let results = search_memory(&conn_guard, "architectural nuance").expect("Search failed");
+    let results = search_memory(&conn_guard, "architectural nuance", None).expect("Search failed");
 
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].memory_id, memory_id.to_string());

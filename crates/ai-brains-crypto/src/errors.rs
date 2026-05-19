@@ -14,7 +14,6 @@ pub enum CryptoError {
     #[error("Decryption failed: {0}")]
     DecryptionError(String),
 
-    #[cfg(windows)]
     #[error("DPAPI error: {0}")]
     DpapiError(String),
 

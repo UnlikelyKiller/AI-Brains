@@ -5,10 +5,18 @@ use std::path::{Path, PathBuf};
 pub fn find_changeguard_dir(start_path: &Path) -> Option<PathBuf> {
     let mut current = start_path.to_path_buf();
     loop {
+        // Check .changeguard
         let changeguard_path = current.join(".changeguard");
         if changeguard_path.is_dir() {
             return Some(changeguard_path);
         }
+
+        // Check .git/.changeguard
+        let git_changeguard_path = current.join(".git").join(".changeguard");
+        if git_changeguard_path.is_dir() {
+            return Some(git_changeguard_path);
+        }
+
         if !current.pop() {
             break;
         }

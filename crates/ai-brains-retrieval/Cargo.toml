@@ -9,11 +9,14 @@ repository.workspace = true
 [dependencies]
 ai-brains-core = { path = "../ai-brains-core" }
 ai-brains-store = { path = "../ai-brains-store" }
+ai-brains-contracts = { path = "../ai-brains-contracts" }
 ai-brains-graph = { path = "../ai-brains-graph", optional = true }
 rusqlite = "0.32"
 thiserror.workspace = true
 strip-ansi-escapes.workspace = true
 chrono = { workspace = true }
+serde_json = "1.0"
+tempfile = "3.10"
 
 [features]
 default = []

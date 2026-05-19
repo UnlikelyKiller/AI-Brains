@@ -31,6 +31,8 @@ pub enum EventKind {
     RecipePromoted,
     MemorySynthesized,
     FeedbackMetric,
+    PredictionRecorded,
+    VerifyOutcomeRecorded,
 
     // Catch-all for forward compatibility
     #[serde(other)]

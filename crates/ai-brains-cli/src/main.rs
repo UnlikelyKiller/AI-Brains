@@ -165,7 +165,30 @@ pub enum SyncCommands {
     Pull {
         /// Path to the NDJSON file
         #[arg(long)]
-        from_file: PathBuf,
+        from_file: Option<PathBuf>,
+        /// Export hotspot data from ChangeGuard
+        #[arg(long)]
+        hotspots: bool,
+        /// Export ledger delta data from ChangeGuard
+        #[arg(long)]
+        ledger: bool,
+    },
+    /// Push current context to ChangeGuard
+    Push {
+        /// Include impact context
+        #[arg(long)]
+        with_impact: bool,
+        /// Include verification context
+        #[arg(long)]
+        with_verify: bool,
+    },
+    /// Unified query across AI-Brains and ChangeGuard
+    Query {
+        /// The query string
+        query: String,
+        /// Output format (pretty, text, ndjson)
+        #[arg(long)]
+        format: Option<String>,
     },
 }
 
@@ -219,7 +242,16 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             new_session,
             show,
             tx_id,
-        } => commands::context::run(*new_project, *new_session, *show, tx_id.clone()),
+        } => {
+            commands::context::run(*new_project, *new_session, *show, tx_id.clone())?;
+            if !*show {
+                dotenvy::dotenv_override().ok();
+                let ctx = AppContext::from_cli(cli.vault_path.clone(), cli.key.clone())?;
+                println!("Auto-triggering sync pull from ChangeGuard...");
+                commands::sync::run_pull(&ctx, None, true, true)?;
+            }
+            Ok(())
+        }
         _ => {
             let ctx = AppContext::from_cli(cli.vault_path.clone(), cli.key.clone())?;
             match &cli.command {
@@ -310,8 +342,17 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     }
                 },
                 Commands::Sync { command } => match command {
-                    SyncCommands::Pull { from_file } => {
-                        commands::sync::run_pull(&ctx, from_file.clone())
+                    SyncCommands::Pull {
+                        from_file,
+                        hotspots,
+                        ledger,
+                    } => commands::sync::run_pull(&ctx, from_file.clone(), *hotspots, *ledger),
+                    SyncCommands::Push {
+                        with_impact,
+                        with_verify,
+                    } => commands::sync::run_push(&ctx, *with_impact, *with_verify),
+                    SyncCommands::Query { query, format } => {
+                        commands::sync::run_query(&ctx, query.clone(), format.clone())
                     }
                 },
                 Commands::AntigravityImport { days } => {

@@ -27,6 +27,13 @@ pub fn build_preflight(
 
     let mut sections = Vec::new();
 
+    // --- ChangeGuard Blended Section (New) ---
+    if let Some(ref pid) = project_id_str {
+        if let Some(cg_context) = query_changeguard(pid) {
+            sections.push(cg_context);
+        }
+    }
+
     // --- Onboarding & Safety Section (Max 15% of budget) ---
     let onboarding_budget = (max_words * 15) / 100;
     let mut safety_entries: Vec<(String, String)> = Vec::new(); // (content, updated_at)
@@ -232,6 +239,72 @@ pub fn build_preflight(
         word_count: word_count(&text),
         text,
     })
+}
+
+fn query_changeguard(_project_id: &str) -> Option<String> {
+    // 1. Create a temp file
+    let temp_file = tempfile::NamedTempFile::new().ok()?;
+    let temp_path = temp_file.path().to_path_buf();
+
+    // 2. Invoke changeguard bridge export --out <temp_path> --hotspots
+    let output = std::process::Command::new("changeguard")
+        .args([
+            "bridge",
+            "export",
+            "--out",
+            &temp_path.to_string_lossy(),
+            "--hotspots",
+        ])
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    // 3. Read the temp file, deserialize records, construct a clean text response
+    use std::fs::File;
+    use std::io::{BufRead, BufReader};
+    let file = File::open(&temp_path).ok()?;
+    let reader = BufReader::new(file);
+
+    let mut hotspots = Vec::new();
+    for line in reader.lines() {
+        let line = line.ok()?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        if let Ok(record) = serde_json::from_str::<ai_brains_contracts::bridge::BridgeRecord>(&line)
+        {
+            if record.record_kind == "hotspot_delta" {
+                if let Some(path) = record.payload.get("path").and_then(|v| v.as_str()) {
+                    let score = record
+                        .payload
+                        .get("score")
+                        .and_then(|v| v.as_f64())
+                        .unwrap_or(0.0);
+                    let reason = record
+                        .payload
+                        .get("reason")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+                    hotspots.push(format!(
+                        "- {} (Score: {:.2}, Reason: {}) [Source: ChangeGuard]",
+                        path, score, reason
+                    ));
+                }
+            }
+        }
+    }
+
+    if hotspots.is_empty() {
+        None
+    } else {
+        Some(format!(
+            "--- ChangeGuard Intelligence ---\nTop Hotspots:\n{}",
+            hotspots.join("\n")
+        ))
+    }
 }
 
 /// Extract file paths from hotspot table content (lines containing `| crates/` or similar).

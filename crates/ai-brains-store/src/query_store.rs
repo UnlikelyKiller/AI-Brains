@@ -22,12 +22,6 @@ impl QueryStore for VaultConnection {
     fn get_session_turns(&self, session_id: &str) -> Result<Vec<(String, String)>> {
         let conn = self.lock()?;
 
-        // Update last_accessed_at
-        conn.execute(
-            "UPDATE turn_projection SET last_accessed_at = ? WHERE session_id = ?",
-            [chrono::Utc::now().to_rfc3339(), session_id.to_string()],
-        )?;
-
         let mut stmt = conn.prepare(
             "SELECT role, content FROM turn_projection
              WHERE session_id = ?
@@ -106,19 +100,6 @@ impl QueryStore for VaultConnection {
             [cutoff.to_rfc3339()],
         )?;
         Ok(count)
-    }
-
-    fn update_memory_status(&self, memory_id: &MemoryId, status: &str) -> Result<()> {
-        let conn = self.lock()?;
-        conn.execute(
-            "UPDATE memory_projection SET status = ?, updated_at = ? WHERE memory_id = ?",
-            [
-                status,
-                &chrono::Utc::now().to_rfc3339(),
-                &memory_id.to_string(),
-            ],
-        )?;
-        Ok(())
     }
 
     fn list_forgotten_memories(

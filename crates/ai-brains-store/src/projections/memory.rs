@@ -2,7 +2,7 @@ use crate::errors::Result;
 use crate::errors::StoreError;
 use crate::projections::Projection;
 use ai_brains_events::{Envelope, Payload};
-use rusqlite::Transaction;
+use rusqlite::{OptionalExtension, Transaction};
 use time::format_description::well_known::Rfc3339;
 
 pub struct MemoryProjection;
@@ -53,11 +53,16 @@ impl Projection for MemoryProjection {
                 }
             }
             Payload::SessionSummaryCreated(p) => {
-                let project_id: String = tx.query_row(
-                    "SELECT project_id FROM session_projection WHERE session_id = ?",
-                    rusqlite::params![p.session_id.to_string()],
-                    |row| row.get(0),
-                )?;
+                let project_id: Option<String> = if let Some(pid) = &p.project_id {
+                    Some(pid.to_string())
+                } else {
+                    tx.query_row(
+                        "SELECT project_id FROM session_projection WHERE session_id = ?",
+                        rusqlite::params![p.session_id.to_string()],
+                        |row| row.get(0),
+                    )
+                    .optional()?
+                };
 
                 tx.execute(
                     "INSERT INTO memory_projection (memory_id, session_id, project_id, content, privacy, status, level, created_at, updated_at)

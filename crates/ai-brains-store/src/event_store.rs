@@ -9,6 +9,12 @@ pub trait EventStore: Send + Sync {
     fn append_event(&self, envelope: &Envelope) -> Result<()>;
     fn read_events(&self, aggregate_id: Uuid) -> Result<Vec<Envelope>>;
     fn read_all_events(&self) -> Result<Vec<Envelope>>;
+    fn get_sync_state(&self, key: &str) -> Result<Option<String>>;
+    fn set_sync_state(&self, key: &str, value: &str) -> Result<()>;
+    fn get_session_privacy(
+        &self,
+        session_id: &str,
+    ) -> Result<Option<ai_brains_core::privacy::Privacy>>;
 }
 
 pub struct SqliteEventStore {
@@ -100,6 +106,45 @@ impl EventStore for SqliteEventStore {
 
     fn read_all_events(&self) -> Result<Vec<Envelope>> {
         self.read_events_internal(None)
+    }
+
+    fn get_sync_state(&self, key: &str) -> Result<Option<String>> {
+        let conn = self.conn.lock()?;
+        let mut stmt = conn.prepare("SELECT value FROM sync_state WHERE key = ?")?;
+        let mut rows = stmt.query(params![key])?;
+        if let Some(row) = rows.next()? {
+            Ok(Some(row.get(0)?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn set_sync_state(&self, key: &str, value: &str) -> Result<()> {
+        let conn = self.conn.lock()?;
+        conn.execute(
+            "INSERT INTO sync_state (key, value) VALUES (?, ?)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![key, value],
+        )?;
+        Ok(())
+    }
+
+    fn get_session_privacy(
+        &self,
+        session_id: &str,
+    ) -> Result<Option<ai_brains_core::privacy::Privacy>> {
+        let conn = self.conn.lock()?;
+        let mut stmt =
+            conn.prepare("SELECT privacy FROM session_projection WHERE session_id = ?")?;
+        let mut rows = stmt.query(params![session_id])?;
+        if let Some(row) = rows.next()? {
+            let p_str: String = row.get(0)?;
+            let p: ai_brains_core::privacy::Privacy = serde_json::from_str(&p_str)
+                .map_err(|e| StoreError::EventReadFailed(e.to_string()))?;
+            Ok(Some(p))
+        } else {
+            Ok(None)
+        }
     }
 }
 

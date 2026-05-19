@@ -35,8 +35,10 @@ pub fn run(
     }
 
     // Auto-discovery from ChangeGuard
-    let discovered_project_id = find_changeguard_dir(&current_dir)
-        .and_then(|dir| extract_project_id_from_changeguard(&dir))
+    let changeguard_dir = find_changeguard_dir(&current_dir);
+    let discovered_project_id = changeguard_dir
+        .as_ref()
+        .and_then(|dir| extract_project_id_from_changeguard(dir))
         .and_then(|id_str| id_str.parse::<ProjectId>().ok());
 
     let project_id = if new_project {
@@ -116,6 +118,52 @@ pub fn run(
     println!("Project ID: {}", project_id);
     println!("Session ID: {}", session_id);
     println!("Local .env updated successfully.");
+
+    // Auto-trigger sync pull (only when .changeguard is discovered in the repo)
+    if changeguard_dir.is_some() {
+        // 1. Load the newly updated local .env
+        if env_path.exists() {
+            dotenvy::from_path_override(&env_path).ok();
+        }
+
+        // 2. Resolve vault path and key from environment or fallback
+        let vault_path = std::env::var("AI_BRAINS_VAULT_PATH")
+            .map(std::path::PathBuf::from)
+            .or_else(|_| {
+                // Check global env
+                if let Some(mut home) = dirs::home_dir() {
+                    home.push(".ai-brains");
+                    home.push(".env");
+                    if home.exists() {
+                        dotenvy::from_path_override(&home).ok();
+                    }
+                }
+                std::env::var("AI_BRAINS_VAULT_PATH").map(std::path::PathBuf::from)
+            })
+            .unwrap_or_else(|_| {
+                let mut path = dirs::home_dir().unwrap_or_else(|| std::path::PathBuf::from("."));
+                path.push(".ai-brains");
+                path.push("vault.db");
+                path
+            });
+
+        let vault_key = std::env::var("AI_BRAINS_VAULT_KEY").ok();
+
+        // 3. Create context and execute sync pull (best-effort)
+        println!("Auto-triggering sync pull from ChangeGuard...");
+        match crate::context::AppContext::from_cli(Some(vault_path), vault_key) {
+            Ok(ctx) => {
+                if let Err(e) = crate::commands::sync::run_pull(&ctx, None, false, false) {
+                    eprintln!("Auto-trigger sync pull failed: {}", e);
+                } else {
+                    println!("Auto-trigger sync pull completed successfully.");
+                }
+            }
+            Err(e) => {
+                eprintln!("Auto-trigger sync pull skipped (vault unavailable): {}", e);
+            }
+        }
+    }
 
     Ok(())
 }

@@ -30,7 +30,17 @@ pub fn normalize_project_path(input: &str) -> Result<ProjectPath> {
     } else if has_drive_prefix(&normalized_input) {
         normalize_drive_path(&normalized_input)?
     } else {
-        return Err(PathError::RelativePath(trimmed.to_string()));
+        // Resolve relative path
+        let mut abs = std::env::current_dir().map_err(|e| PathError::IoError(e.to_string()))?;
+        abs.push(trimmed);
+        let abs_str = abs.to_string_lossy().to_string();
+        if is_unc_path(&abs_str) {
+            normalize_unc(&abs_str)
+        } else if has_drive_prefix(&abs_str) {
+            normalize_drive_path(&abs_str)?
+        } else {
+            return Err(PathError::RelativePath(trimmed.to_string()));
+        }
     };
 
     let canonical = resolve_best_effort(&canonical);

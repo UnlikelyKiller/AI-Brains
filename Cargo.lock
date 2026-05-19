@@ -134,8 +134,10 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
+ "sha2",
  "strip-ansi-escapes",
  "tempfile",
+ "time",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -257,6 +259,7 @@ dependencies = [
 name = "ai-brains-retrieval"
 version = "0.1.0"
 dependencies = [
+ "ai-brains-contracts",
  "ai-brains-core",
  "ai-brains-crypto",
  "ai-brains-events",
@@ -318,11 +321,14 @@ dependencies = [
  "ai-brains-crypto",
  "ai-brains-daemon-api",
  "ai-brains-events",
+ "ai-brains-retrieval",
  "ai-brains-store",
+ "chrono",
  "dirs 5.0.1",
  "dotenvy",
  "serde",
  "serde_json",
+ "sha2",
  "tokio",
  "uuid",
 ]

@@ -1,15 +1,17 @@
 use crate::errors::{PathError, Result};
 
 pub fn is_wsl_mount_path(input: &str) -> bool {
-    input.starts_with("/mnt/") || input.starts_with("/MNT/")
+    input.to_lowercase().starts_with("/mnt/")
 }
 
 pub fn wsl_to_windows(input: &str) -> Result<String> {
     let trimmed = input.trim();
-    let rest = trimmed
-        .strip_prefix("/mnt/")
-        .or_else(|| trimmed.strip_prefix("/MNT/"))
-        .ok_or_else(|| PathError::MalformedWslPath(trimmed.to_string()))?;
+    let lower = trimmed.to_lowercase();
+    let rest = if lower.starts_with("/mnt/") {
+        &trimmed[5..]
+    } else {
+        return Err(PathError::MalformedWslPath(trimmed.to_string()));
+    };
 
     let mut parts = rest.split('/');
     let drive = parts

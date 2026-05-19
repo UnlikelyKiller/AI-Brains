@@ -49,3 +49,4 @@ predicates = "3.1"
 rusqlite = { version = "0.32.1", features = ["bundled", "backup"] }
 dotenvy = "0.15"
 strip-ansi-escapes = "0.2"
+sha2 = "0.10"

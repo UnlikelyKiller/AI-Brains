@@ -84,6 +84,7 @@ pub struct MemoryRestoredPayload {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SessionSummaryCreatedPayload {
     pub session_id: SessionId,
+    pub project_id: Option<ProjectId>,
     pub memory_id: MemoryId,
     pub summary: String,
 }
@@ -123,6 +124,20 @@ pub struct FeedbackMetricPayload {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PredictionRecordedPayload {
+    pub session_id: SessionId,
+    pub tx_id: Option<TransactionId>,
+    pub predicted_paths: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct VerifyOutcomeRecordedPayload {
+    pub tx_id: TransactionId,
+    pub status: String,
+    pub affected_paths: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "PascalCase")]
 pub enum Payload {
     SystemInitialized(SystemInitializedPayload),
@@ -142,6 +157,8 @@ pub enum Payload {
     RecipePromoted(RecipePromotedPayload),
     MemorySynthesized(MemorySynthesizedPayload),
     FeedbackMetric(FeedbackMetricPayload),
+    PredictionRecorded(PredictionRecordedPayload),
+    VerifyOutcomeRecorded(VerifyOutcomeRecordedPayload),
 
     /// Used for unknown future events to prevent deserialization failure
     #[serde(other)]

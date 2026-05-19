@@ -25,7 +25,6 @@ pub trait QueryStore: std::marker::Send + std::marker::Sync {
     fn search_memories(&self, query: &str, limit: usize) -> Result<Vec<(MemoryId, String)>>;
     fn get_memories_by_level(&self, level: u32) -> Result<Vec<(MemoryId, String)>>;
     fn delete_old_turns(&self, cutoff: chrono::DateTime<chrono::Utc>) -> Result<usize>;
-    fn update_memory_status(&self, memory_id: &MemoryId, status: &str) -> Result<()>;
     fn list_forgotten_memories(
         &self,
         project_id: Option<ai_brains_core::ids::ProjectId>,

@@ -12,4 +12,6 @@ pub enum PathError {
     RelativePath(String),
     #[error("malformed WSL mount path: {0}")]
     MalformedWslPath(String),
+    #[error("I/O error during path normalization: {0}")]
+    IoError(String),
 }
