@@ -2,9 +2,9 @@
 
 ## Project Status
 **Status:** In Progress
-**Phase:** Phase 16 - Technical Debt & Refactoring [IN PROGRESS]
-**Current Track:** T36 - CLI Polish & Workflow
-**Verification:** Full Windows workspace gate is green as of 2026-05-12.
+**Phase:** Phase 17 - ChangeGuard Integration [COMPLETED]
+**Current Track:** Final Cleanup & Release Handover
+**Verification:** Full Windows workspace gate is green as of 2026-05-19.
 
 ## Track Registry
 
@@ -43,32 +43,15 @@
 | T34 | Resilient Summarization Truncation | **Completed** | Orchestrator | | Sequential chunking with context carryover for large sessions. |
 | T35 | CLI Refactor | **Completed** | Orchestrator | [T35](./tracks/trackT35/spec.md) | Decomposed main.rs, created AppContext, moved Antigravity import. |
 | T36 | CLI Polish & Workflow | **Completed** | Orchestrator | [T36](./tracks/track036-cli-polish-workflow.md) | Manual audit of 9 commands; fix FTS5, ChangeGuard JSON, session safety, cross-command workflow. |
+| T37 | Transaction Linking & Project Discovery | **Completed** | Orchestrator | [T37](./tracks/trackT37/spec.md) | Accept --tx-id in context/pin; auto-discover project_id from .changeguard. |
+| T38 | Structured Bridge (NDJSON Fallback) | **Completed** | Orchestrator | [T38](./tracks/trackT38/spec.md) | Define BridgeRecord schema and implement sync pull from NDJSON. |
+| T39 | Real-Time Bridge (IPC) | **Completed** | Orchestrator | [T39](./tracks/trackT39/spec.md) | Named-pipe/Local-HTTP handoff between ai-brainsd and ChangeGuard. |
+| T40 | Unified Retrieval & Feedback Loop | **Completed** | Orchestrator | [T40](./tracks/trackT40/spec.md) | Blended preflight/ask results; nightly sweep accuracy checks. |
 
-## Current Verification Snapshot
-- `cargo fmt`: passes.
-- `cargo clippy --workspace --all-targets -- -D warnings`: passes.
-- `cargo test --workspace`: passes.
-- Relational graph: native SQLite backend; no C++ dependencies.
-- `changeguard ledger status`: no pending transactions and no unaudited drift.
-
-## Completed Track: T35 - CLI Refactor
-- [x] Decomposed `main.rs` God File into modular command handlers in `src/commands/`.
-- [x] Introduced `AppContext` to encapsulate shared vault and connection state.
-- [x] Migrated Antigravity import core logic to `ai-brains-adapters`.
-- [x] Verified zero behavioral regression via CLI integration tests.
-- [x] Pass CI gate (formatting, clippy, test, deny, audit).
-
-## Completed Track: T34 - Resilient Summarization Truncation
-- [x] Upgraded `ModelProvider` with `tokenize()` and character-based estimation fallback.
-- [x] Implemented `NightlyService` sequential chunking loop with context carryover.
-- [x] Enforced turn-aware splitting to protect message boundaries.
-- [x] Added `AI_BRAINS_CTX_SIZE` environment control for hardware-specific stability (Intel Arc B580).
-- [x] Verified via integration test `nightly_summarizes_large_session`.
-- [x] Updated `Docs/Deviations.md` with hardware-stable context strategies.
-
-## Completed Track: T31 - Onboarding & Observability
-- [x] Hardened `ai-brains` skill with 4-layer protocol (Structural, Behavioral, Observability, Safety).
-- [x] Implemented `ai-brains safety sync` for ChangeGuard hotspot ingestion.
-- [x] Budget-aware preflight context generation with ANSI stripping and deduplication.
-- [x] ChangeGuard ledger transaction `cf1b21f6` recorded for protocol hardening.
-- [x] Verified word-budget enforcement in `ai-brains-retrieval`.
+## Completed Phase: Phase 17 - ChangeGuard Integration
+- [x] Bidirectional structured sync with ChangeGuard via `BridgeRecord`.
+- [x] Windows Named Pipe IPC in `ai-brainsd` (`\\.\pipe\aibrains-sync`).
+- [x] Transaction linking support (`--tx-id`) in CLI context and pin.
+- [x] Auto-discovery of project IDs from `.changeguard` metadata.
+- [x] Nightly feedback loop with prediction accuracy metrics.
+- [x] Verified via CI gate and ChangeGuard ledger.

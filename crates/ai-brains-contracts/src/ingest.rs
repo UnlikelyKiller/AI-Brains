@@ -1,4 +1,4 @@
-use ai_brains_core::ids::{HarnessId, SessionId, TurnId};
+use ai_brains_core::ids::{HarnessId, SessionId, TransactionId, TurnId};
 use ai_brains_core::privacy::Privacy;
 use serde::{Deserialize, Serialize};
 
@@ -13,6 +13,8 @@ pub struct IngestRequest {
     pub privacy: Privacy,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub thinking: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tx_id: Option<TransactionId>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

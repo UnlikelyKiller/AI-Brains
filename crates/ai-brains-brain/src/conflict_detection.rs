@@ -85,7 +85,7 @@ impl ConflictDetectionService {
         .build(Payload::ConflictDetected(ConflictDetectedPayload {
             conflict_id,
             session_id: *session_id,
-            contradicted_memory_ids: related_memories.iter().map(|(id, _)| *id).collect(),
+            memory_ids: related_memories.iter().map(|(id, _)| *id).collect(),
             explanation: response.text,
         }))?;
 

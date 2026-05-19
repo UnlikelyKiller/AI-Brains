@@ -17,6 +17,7 @@ pub fn build_user_prompt(
     .build(Payload::UserPromptRecorded(UserPromptRecordedPayload {
         session_id: request.session_id,
         content: request.content.clone(),
+        tx_id: request.tx_id.clone(),
     }))
     .map_err(Into::into)
 }

@@ -330,6 +330,7 @@ pub fn import_antigravity_sessions<S: CaptureSink>(
                 project_id,
                 harness_id: antigravity_harness,
                 privacy: Privacy::LocalOnly,
+                tx_id: None,
             },
             capture_context.clone(),
             sink,
@@ -351,6 +352,7 @@ pub fn import_antigravity_sessions<S: CaptureSink>(
                 content: turn.content.clone(),
                 privacy: Privacy::LocalOnly,
                 thinking: None,
+                tx_id: None,
             };
             service.ingest_request(request, capture_context.clone(), sink)?;
             total_turns += 1;

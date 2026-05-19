@@ -32,25 +32,22 @@ pub fn build_preflight(
     let mut safety_entries: Vec<(String, String)> = Vec::new(); // (content, updated_at)
     let mut safety_ids: HashSet<String> = HashSet::new();
 
-    let safety_sql = if project_id_str.is_some() {
-        "SELECT m.memory_id, m.content, m.updated_at FROM memory_projection m
+    let safety_sql = "SELECT m.memory_id, m.content, m.updated_at FROM memory_projection m
          LEFT JOIN session_projection s ON m.session_id = s.session_id
          WHERE (m.content LIKE '%CONSTRAINT:%' OR m.content LIKE '%INVARIANT:%' OR m.content LIKE '%HOTSPOT:%')
          AND m.status = 'pinned'
          AND (s.project_id = ? OR m.project_id = ?)
-         ORDER BY m.updated_at DESC LIMIT 10"
-    } else {
-        "SELECT memory_id, content, updated_at FROM memory_projection
-         WHERE (content LIKE '%CONSTRAINT:%' OR content LIKE '%INVARIANT:%' OR content LIKE '%HOTSPOT:%')
-         AND status = 'pinned'
-         ORDER BY updated_at DESC LIMIT 10"
-    };
+         ORDER BY m.updated_at DESC LIMIT 10";
 
     let mut safety_stmt = conn.prepare(safety_sql)?;
     let mut safety_rows = if let Some(ref pid) = project_id_str {
         safety_stmt.query(rusqlite::params![pid, pid])?
     } else {
-        safety_stmt.query([])?
+        // Return nothing if no project_id provided
+        safety_stmt.query(rusqlite::params![
+            Option::<String>::None,
+            Option::<String>::None
+        ])?
     };
     while let Some(row) = safety_rows.next()? {
         let memory_id: String = row.get(0)?;
@@ -83,10 +80,10 @@ pub fn build_preflight(
 
     if !active.is_empty() {
         let mut session_texts = Vec::new();
-        for session in active {
+        for session in &active {
             let mut session_lines = vec![format!("--- Session: {} ---", session.session_id)];
             let had_turns = !session.turns.is_empty();
-            for turn in session.turns {
+            for turn in &session.turns {
                 let content = &turn.content;
                 // Skip test markers
                 if content.starts_with("MANUAL_TEST:") || content.starts_with("VERIFY:") {
@@ -120,25 +117,21 @@ pub fn build_preflight(
     }
 
     // --- General Memory Index (scoped to current project when project_id is known) ---
-    let index_sql = if project_id_str.is_some() {
-        "SELECT m.memory_id, m.content, m.privacy, m.updated_at
+    let index_sql = "SELECT m.memory_id, m.content, m.privacy, m.updated_at
          FROM memory_projection m
          LEFT JOIN session_projection s ON m.session_id = s.session_id
          WHERE m.status = 'pinned'
          AND (s.project_id = ? OR m.project_id = ?)
-         ORDER BY m.updated_at DESC"
-    } else {
-        "SELECT memory_id, content, privacy, updated_at
-         FROM memory_projection
-         WHERE status = 'pinned'
-         ORDER BY updated_at DESC"
-    };
+         ORDER BY m.updated_at DESC";
 
     let mut stmt = conn.prepare(index_sql)?;
     let mut rows = if let Some(ref pid) = project_id_str {
         stmt.query(rusqlite::params![pid, pid])?
     } else {
-        stmt.query([])?
+        stmt.query(rusqlite::params![
+            Option::<String>::None,
+            Option::<String>::None
+        ])?
     };
     let mut collected: Vec<(String, String)> = Vec::new(); // (content, updated_at)
 
@@ -228,6 +221,10 @@ pub fn build_preflight(
             sections.push(trim_to_word_budget(&index_text, remaining_budget));
             sections.push("... [Index Truncated]".to_string());
         }
+    }
+
+    if collected.is_empty() && active.is_empty() && project_id.is_none() {
+        sections.push("--- AI-Brains: New Repository Detected ---\nThis repository has not been initialized with AI-Brains. No previous memories or safety signals are available for this context. Run 'ai-brains context' to initialize project tracking.".to_string());
     }
 
     let text = trim_to_word_budget(&sections.join("\n\n"), max_words);

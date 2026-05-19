@@ -1,4 +1,5 @@
 pub mod backup;
+pub mod bridge;
 pub mod doctor;
 pub mod hook;
 pub mod ingest;

@@ -84,7 +84,7 @@ impl<'a> GraphProjector<'a> {
             Payload::ConflictDetected(p) => {
                 let conflict_node_id =
                     self.ensure_node(&conn, &p.conflict_id.to_string(), "conflict")?;
-                for memory_id in &p.contradicted_memory_ids {
+                for memory_id in &p.memory_ids {
                     let memory_node_id =
                         self.ensure_node(&conn, &memory_id.to_string(), "memory")?;
                     self.ensure_edge(&conn, conflict_node_id, "CONFLICTS_WITH", memory_node_id)?;
@@ -92,10 +92,10 @@ impl<'a> GraphProjector<'a> {
             }
             Payload::RecipePromoted(p) => {
                 let recipe_node_id = self.ensure_node(&conn, &p.recipe_id.to_string(), "recipe")?;
-                for session_id in &p.source_session_ids {
-                    let session_node_id =
-                        self.ensure_node(&conn, &session_id.to_string(), "session")?;
-                    self.ensure_edge(&conn, session_node_id, "PART_OF_RECIPE", recipe_node_id)?;
+                for memory_id in &p.source_memory_ids {
+                    let memory_node_id =
+                        self.ensure_node(&conn, &memory_id.to_string(), "memory")?;
+                    self.ensure_edge(&conn, memory_node_id, "PART_OF_RECIPE", recipe_node_id)?;
                 }
             }
             Payload::MemoryForgotten(_) => {

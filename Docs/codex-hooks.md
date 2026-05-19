@@ -137,19 +137,20 @@ The project-local file usually provides `AI_BRAINS_PROJECT_ID`, `AI_BRAINS_SESSI
 ### SessionStart
 
 1. Runs `ai-brains preflight --max-words 1500`.
-2. If preflight succeeds, returns:
+2. Appends a session skill-routing gate reminding Codex to check mandatory or applicable skills before choosing tools, research backends, or implementation workflows.
+3. If preflight succeeds, returns:
 
 ```json
 {
   "continue": true,
   "hookSpecificOutput": {
     "hookEventName": "SessionStart",
-    "additionalContext": "<preflight text>"
+    "additionalContext": "<preflight text plus skill-routing gate>"
   }
 }
 ```
 
-3. If preflight fails, logs to stderr and returns `{ "continue": true }`.
+4. If preflight fails, logs to stderr and returns `{ "continue": true }`.
 
 ### UserPromptSubmit
 

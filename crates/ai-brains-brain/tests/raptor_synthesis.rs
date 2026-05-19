@@ -41,6 +41,7 @@ async fn test_raptor_synthesis() -> Result<(), Box<dyn std::error::Error>> {
     .build(Payload::ProjectRegistered(ProjectRegisteredPayload {
         project_id,
         name: "Test Project".to_string(),
+        tx_id: None,
     }))?;
     event_store.append_event(&reg_event)?;
 
@@ -56,6 +57,7 @@ async fn test_raptor_synthesis() -> Result<(), Box<dyn std::error::Error>> {
     .build(Payload::SessionStarted(SessionStartedPayload {
         session_id: session_1_id,
         project_id,
+        tx_id: None,
     }))?;
     event_store.append_event(&start_1)?;
 
@@ -69,6 +71,7 @@ async fn test_raptor_synthesis() -> Result<(), Box<dyn std::error::Error>> {
     .build(Payload::UserPromptRecorded(UserPromptRecordedPayload {
         session_id: session_1_id,
         content: "Fixed a bug in the auth layer by adding a retry loop.".to_string(),
+        tx_id: None,
     }))?;
     event_store.append_event(&prompt_1)?;
 
@@ -96,6 +99,7 @@ async fn test_raptor_synthesis() -> Result<(), Box<dyn std::error::Error>> {
     .build(Payload::SessionStarted(SessionStartedPayload {
         session_id: session_2_id,
         project_id,
+        tx_id: None,
     }))?;
     event_store.append_event(&start_2)?;
 
@@ -109,6 +113,7 @@ async fn test_raptor_synthesis() -> Result<(), Box<dyn std::error::Error>> {
     .build(Payload::UserPromptRecorded(UserPromptRecordedPayload {
         session_id: session_2_id,
         content: "Optimized the auth database queries to reduce latency.".to_string(),
+        tx_id: None,
     }))?;
     event_store.append_event(&prompt_2)?;
 
@@ -230,6 +235,7 @@ async fn test_crag_rejects_unsupported_synthesis() -> Result<(), Box<dyn std::er
     .build(Payload::ProjectRegistered(ProjectRegisteredPayload {
         project_id,
         name: "Test Project".to_string(),
+        tx_id: None,
     }))?;
     event_store.append_event(&reg_event)?;
 
@@ -245,6 +251,7 @@ async fn test_crag_rejects_unsupported_synthesis() -> Result<(), Box<dyn std::er
     .build(Payload::SessionStarted(SessionStartedPayload {
         session_id: session_1_id,
         project_id,
+        tx_id: None,
     }))?;
     event_store.append_event(&start_1)?;
 
@@ -258,6 +265,7 @@ async fn test_crag_rejects_unsupported_synthesis() -> Result<(), Box<dyn std::er
     .build(Payload::UserPromptRecorded(UserPromptRecordedPayload {
         session_id: session_1_id,
         content: "Working on auth.".to_string(),
+        tx_id: None,
     }))?;
     event_store.append_event(&prompt_1)?;
 
@@ -285,6 +293,7 @@ async fn test_crag_rejects_unsupported_synthesis() -> Result<(), Box<dyn std::er
     .build(Payload::SessionStarted(SessionStartedPayload {
         session_id: session_2_id,
         project_id,
+        tx_id: None,
     }))?;
     event_store.append_event(&start_2)?;
 
@@ -298,6 +307,7 @@ async fn test_crag_rejects_unsupported_synthesis() -> Result<(), Box<dyn std::er
     .build(Payload::UserPromptRecorded(UserPromptRecordedPayload {
         session_id: session_2_id,
         content: "Optimizing auth.".to_string(),
+        tx_id: None,
     }))?;
     event_store.append_event(&prompt_2)?;
 

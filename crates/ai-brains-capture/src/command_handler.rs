@@ -8,7 +8,7 @@ use crate::session_start::build_session_started;
 use crate::session_stop::build_session_stop;
 use crate::user_prompt::build_user_prompt;
 use ai_brains_contracts::ingest::IngestRequest;
-use ai_brains_core::ids::{HarnessId, ProjectId, SessionId};
+use ai_brains_core::ids::{HarnessId, ProjectId, SessionId, TransactionId};
 use ai_brains_core::privacy::Privacy;
 use ai_brains_events::Envelope;
 use std::path::PathBuf;
@@ -24,6 +24,7 @@ pub struct SessionStartCommand {
     pub project_id: ProjectId,
     pub harness_id: HarnessId,
     pub privacy: Privacy,
+    pub tx_id: Option<TransactionId>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

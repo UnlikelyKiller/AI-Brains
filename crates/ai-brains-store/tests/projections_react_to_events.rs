@@ -31,6 +31,7 @@ fn test_projections_update_from_events() {
     let payload = Payload::ProjectRegistered(ProjectRegisteredPayload {
         project_id,
         name: "test".to_string(),
+        tx_id: None,
     });
 
     let envelope = EventBuilder::new(

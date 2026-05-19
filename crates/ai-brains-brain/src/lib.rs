@@ -7,12 +7,14 @@ use std::sync::Arc;
 
 mod backup;
 mod conflict_detection;
+mod feedback_loop;
 mod memory_synthesis;
 mod recipe_promotion;
 mod retention;
 
 pub use backup::BackupService;
 use conflict_detection::ConflictDetectionService;
+pub use feedback_loop::FeedbackLoopService;
 use memory_synthesis::MemorySynthesizer;
 use recipe_promotion::RecipePromotionService;
 pub use retention::RetentionService;
@@ -113,6 +115,12 @@ impl NightlyService {
         );
         if let Err(e) = cross_agent.run_cross_agent_synthesis(project_id).await {
             tracing::error!("Cross-agent synthesis failed: {}", e);
+        }
+
+        // Feedback Loop Accuracy Check
+        let feedback = FeedbackLoopService::new(self.query_store.clone(), self.event_store.clone());
+        if let Err(e) = feedback.run_accuracy_check(project_id).await {
+            tracing::error!("Feedback loop check failed: {}", e);
         }
 
         Ok(count)

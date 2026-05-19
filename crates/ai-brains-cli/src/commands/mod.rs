@@ -10,3 +10,4 @@ pub mod preflight;
 pub mod recall;
 pub mod safety;
 pub mod stop_session;
+pub mod sync;

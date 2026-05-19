@@ -15,6 +15,7 @@ fn test_ingest_request_shape() {
         content: "hello world".to_string(),
         privacy: Privacy::CloudOk,
         thinking: None,
+        tx_id: None,
     };
 
     let serialized =

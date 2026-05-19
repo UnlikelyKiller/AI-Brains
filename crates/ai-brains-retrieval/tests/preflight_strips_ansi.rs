@@ -10,7 +10,8 @@ fn preflight_strips_ansi_from_pinned_memories() -> Result<(), Box<dyn std::error
         "HOTSPOT: Brittle files identified by ChangeGuard:\n\n\u{1b}[32m INFO\u{1b}[0m file loaded";
     let store = common::store_with_memory(ansi_content, Privacy::CloudOk)?;
 
-    let context = build_preflight(store.connection(), None, 1500, None)?;
+    let project_id = ai_brains_core::ids::ProjectId::from_uuid(uuid::Uuid::nil());
+    let context = build_preflight(store.connection(), None, 1500, Some(project_id))?;
 
     // The preflight output must NOT contain ANSI escape sequences
     assert!(

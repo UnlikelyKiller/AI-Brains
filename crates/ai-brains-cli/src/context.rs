@@ -49,6 +49,10 @@ impl AppContext {
         harness_id: ai_brains_core::ids::HarnessId,
         privacy: ai_brains_core::privacy::Privacy,
     ) -> Result<(), Box<dyn std::error::Error>> {
+        let tx_id = std::env::var("CHANGEGUARD_TX_ID")
+            .ok()
+            .map(ai_brains_core::ids::TransactionId::new);
+
         // Auto-create project if it doesn't exist
         let project_exists = {
             let conn_lock = self.conn.lock()?;
@@ -68,6 +72,7 @@ impl AppContext {
             .build(Payload::ProjectRegistered(ProjectRegisteredPayload {
                 project_id,
                 name: format!("Project {}", project_id),
+                tx_id: tx_id.clone(),
             }))?;
 
             sink.store.append_event(&event)?;
@@ -88,6 +93,7 @@ impl AppContext {
                     project_id,
                     harness_id,
                     privacy,
+                    tx_id,
                 },
                 capture_context.clone(),
                 sink,

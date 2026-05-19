@@ -47,6 +47,7 @@ async fn test_nightly_summarizes_large_session_via_chunking(
             ai_brains_events::ProjectRegisteredPayload {
                 project_id,
                 name: "Test Project".to_string(),
+                tx_id: None,
             },
         ))?,
         ai_brains_events::constructors::EventBuilder::new(
@@ -59,6 +60,7 @@ async fn test_nightly_summarizes_large_session_via_chunking(
         .build(Payload::SessionStarted(SessionStartedPayload {
             session_id,
             project_id,
+            tx_id: None,
         }))?,
     ];
 
@@ -76,6 +78,7 @@ async fn test_nightly_summarizes_large_session_via_chunking(
             .build(Payload::UserPromptRecorded(UserPromptRecordedPayload {
                 session_id,
                 content: turn_content.to_string(),
+                tx_id: None,
             }))?,
         );
     }

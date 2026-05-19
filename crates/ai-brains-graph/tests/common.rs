@@ -36,6 +36,7 @@ pub fn append_session(
     let project_payload = Payload::ProjectRegistered(ProjectRegisteredPayload {
         project_id,
         name: "test-project".to_string(),
+        tx_id: None,
     });
     let project_envelope = EventBuilder::new(
         AggregateType::Project,
@@ -50,6 +51,7 @@ pub fn append_session(
     let payload = Payload::SessionStarted(SessionStartedPayload {
         session_id,
         project_id,
+        tx_id: None,
     });
     let envelope = EventBuilder::new(
         AggregateType::Session,

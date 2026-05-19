@@ -102,6 +102,9 @@ enum Commands {
         /// Show current context without modifying anything
         #[arg(long)]
         show: bool,
+        /// Optional ChangeGuard transaction ID to link this context to
+        #[arg(long, env = "CHANGEGUARD_TX_ID")]
+        tx_id: Option<String>,
     },
     /// Pin a high-level decision or constraint directly to the vault
     Pin {
@@ -119,11 +122,19 @@ enum Commands {
         /// Tags to categorize this memory (repeatable)
         #[arg(long = "tag", short = 't')]
         tags: Vec<String>,
+        /// Optional ChangeGuard transaction ID to link this pin to
+        #[arg(long, env = "CHANGEGUARD_TX_ID")]
+        tx_id: Option<String>,
     },
     /// Manage repository safety signals
     Safety {
         #[command(subcommand)]
         command: SafetyCommands,
+    },
+    /// Sync structured records from external tools (ChangeGuard)
+    Sync {
+        #[command(subcommand)]
+        command: SyncCommands,
     },
     /// Import Antigravity conversation logs into the vault
     AntigravityImport {
@@ -149,6 +160,16 @@ pub enum BackupCommands {
 }
 
 #[derive(Subcommand, Clone)]
+pub enum SyncCommands {
+    /// Pull records from an NDJSON file
+    Pull {
+        /// Path to the NDJSON file
+        #[arg(long)]
+        from_file: PathBuf,
+    },
+}
+
+#[derive(Subcommand, Clone)]
 pub enum SafetyCommands {
     /// Synchronize ChangeGuard hotspots into the AI-Brains vault
     Sync {
@@ -162,8 +183,15 @@ pub enum SafetyCommands {
 }
 
 fn main() {
-    // Project .env always wins over inherited shell vars — prevents cross-project ID bleed
-    dotenvy::dotenv_override().ok();
+    // Project .env always wins over inherited shell vars.
+    // If no local .env exists, we clear project-specific env vars to prevent
+    // stale inheritance from other projects in the same shell session.
+    if !std::path::Path::new(".env").exists() {
+        std::env::remove_var("AI_BRAINS_PROJECT_ID");
+        std::env::remove_var("AI_BRAINS_SESSION_ID");
+    } else {
+        dotenvy::dotenv_override().ok();
+    }
 
     // Fallback to global config in ~/.ai-brains/.env if AI_BRAINS_VAULT_PATH not set yet
     if std::env::var("AI_BRAINS_VAULT_PATH").is_err() {
@@ -190,7 +218,8 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             new_project,
             new_session,
             show,
-        } => commands::context::run(*new_project, *new_session, *show),
+            tx_id,
+        } => commands::context::run(*new_project, *new_session, *show, tx_id.clone()),
         _ => {
             let ctx = AppContext::from_cli(cli.vault_path.clone(), cli.key.clone())?;
             match &cli.command {
@@ -252,9 +281,16 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                     privacy,
                     stdin,
                     tags,
+                    tx_id,
                 } => {
                     if *stdin {
-                        commands::pin::run_stdin(&ctx, role.clone(), privacy.clone(), tags.clone())
+                        commands::pin::run_stdin(
+                            &ctx,
+                            role.clone(),
+                            privacy.clone(),
+                            tags.clone(),
+                            tx_id.clone(),
+                        )
                     } else if let Some(c) = content {
                         commands::pin::run(
                             &ctx,
@@ -262,6 +298,7 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                             role.clone(),
                             privacy.clone(),
                             tags.clone(),
+                            tx_id.clone(),
                         )
                     } else {
                         Err("Either provide content as a positional argument or use --stdin to read from stdin.".into())
@@ -270,6 +307,11 @@ fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 Commands::Safety { command } => match command {
                     SafetyCommands::Sync { limit, dry_run } => {
                         commands::safety::run(&ctx, *limit, *dry_run)
+                    }
+                },
+                Commands::Sync { command } => match command {
+                    SyncCommands::Pull { from_file } => {
+                        commands::sync::run_pull(&ctx, from_file.clone())
                     }
                 },
                 Commands::AntigravityImport { days } => {

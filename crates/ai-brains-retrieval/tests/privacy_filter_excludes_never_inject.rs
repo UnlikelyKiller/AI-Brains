@@ -10,7 +10,8 @@ fn privacy_filter_excludes_never_inject() -> Result<(), Box<dyn std::error::Erro
     let results = lexical_search(store.connection(), "operator", None, None)?;
     assert!(results.is_empty());
 
-    let preflight = build_preflight(store.connection(), None, 1500, None)?;
+    let project_id = ai_brains_core::ids::ProjectId::from_uuid(uuid::Uuid::nil());
+    let preflight = build_preflight(store.connection(), None, 1500, Some(project_id))?;
     assert!(preflight.text.is_empty());
     Ok(())
 }

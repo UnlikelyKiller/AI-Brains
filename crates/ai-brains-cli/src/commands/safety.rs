@@ -74,6 +74,7 @@ pub fn run(
         "assistant".to_string(),
         "LocalOnly".to_string(),
         Vec::new(),
+        None,
     )?;
 
     println!("Safety synchronization complete.");

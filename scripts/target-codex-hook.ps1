@@ -212,11 +212,20 @@ function Invoke-Preflight($hookEventName) {
         if ($preflightJson.text) { $preflightText = $preflightJson.text }
     } catch { }
 
+    $skillRoutingContext = @"
+
+--- Session Skill Routing Gate ---
+Before selecting tools, external sources, implementation workflows, or research backends, check whether any skill in the current session is mandatory or clearly applicable to the user's request. If a skill matches, read its SKILL.md and follow its workflow before using generic tools. This applies to all skills, including live research, package documentation, coding, debugging, frontend design, Google Workspace, image generation, and any named skill.
+
+If multiple skills match, choose the minimal set that covers the task and state the order briefly. If a mandatory skill backend is unavailable, say so and use the best fallback instead of silently bypassing the skill.
+--- End Session Skill Routing Gate ---
+"@
+
     Write-HookResponse @{
         continue = $true
         hookSpecificOutput = @{
             hookEventName = $hookEventName
-            additionalContext = $preflightText
+            additionalContext = "$preflightText`n$skillRoutingContext"
         }
     }
 }
@@ -234,7 +243,16 @@ $projectDir = $inputJson.cwd
 if (-not $projectDir) { $projectDir = $env:CODEX_CWD }
 if (-not $projectDir) { $projectDir = $PWD.Path }
 
-if ($projectDir) { Load-Env (Join-Path $projectDir ".env") }
+if ($projectDir) {
+    $projectEnv = Join-Path $projectDir '.env'
+    if (Test-Path -LiteralPath $projectEnv) {
+        Load-Env $projectEnv
+    } else {
+        # New Repository: Clear project-specific IDs to prevent leakage from the shell environment
+        Remove-Item Env:AI_BRAINS_PROJECT_ID -ErrorAction SilentlyContinue
+        Remove-Item Env:AI_BRAINS_SESSION_ID -ErrorAction SilentlyContinue
+    }
+}
 Load-Env (Join-Path $HOME ".ai-brains\.env")
 
 $event = Normalize-HookEventName $inputJson.hook_event_name

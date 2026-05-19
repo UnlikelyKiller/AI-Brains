@@ -14,6 +14,7 @@ pub fn build_session_started(command: &SessionStartCommand) -> crate::Result<Env
     .build(Payload::SessionStarted(SessionStartedPayload {
         session_id: command.session_id,
         project_id: command.project_id,
+        tx_id: command.tx_id.clone(),
     }))
     .map_err(Into::into)
 }

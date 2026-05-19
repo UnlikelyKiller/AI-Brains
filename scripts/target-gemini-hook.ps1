@@ -175,7 +175,15 @@ try {
 }
 
 if ($env:GEMINI_PROJECT_DIR) {
-    Load-Env (Join-Path $env:GEMINI_PROJECT_DIR ".env")
+    $projectDir = $env:GEMINI_PROJECT_DIR
+    $projectEnv = Join-Path $projectDir '.env'
+    if (Test-Path -LiteralPath $projectEnv) {
+        Load-Env $projectEnv
+    } else {
+        # New Repository: Clear project-specific IDs to prevent leakage from the shell environment
+        Remove-Item Env:AI_BRAINS_PROJECT_ID -ErrorAction SilentlyContinue
+        Remove-Item Env:AI_BRAINS_SESSION_ID -ErrorAction SilentlyContinue
+    }
 }
 Load-Env (Join-Path $HOME ".ai-brains\.env")
 

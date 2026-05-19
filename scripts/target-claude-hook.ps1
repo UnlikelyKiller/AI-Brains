@@ -213,8 +213,17 @@ $projectDir = $inputJson.cwd
 if (-not $projectDir) { $projectDir = $env:CLAUDE_PROJECT_DIR }
 if (-not $projectDir) { $projectDir = $PWD.Path }
 
-if ($projectDir) { Load-Env (Join-Path $projectDir '.env') }
-Load-Env (Join-Path $HOME '.ai-brains\.env')
+if ($projectDir) {
+    $projectEnv = Join-Path $projectDir '.env'
+    if (Test-Path -LiteralPath $projectEnv) {
+        Load-Env $projectEnv
+    } else {
+        # New Repository: Clear project-specific IDs to prevent leakage from the shell environment
+        Remove-Item Env:AI_BRAINS_PROJECT_ID -ErrorAction SilentlyContinue
+        Remove-Item Env:AI_BRAINS_SESSION_ID -ErrorAction SilentlyContinue
+    }
+}
+Load-Env (Join-Path $HOME ".ai-brains\.env")
 
 $event = $inputJson.hook_event_name
 Write-Log "Event: $event | CWD: $projectDir"

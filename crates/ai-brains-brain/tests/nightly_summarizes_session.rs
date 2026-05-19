@@ -40,6 +40,7 @@ async fn test_nightly_summarizes_session() -> Result<(), Box<dyn std::error::Err
             ai_brains_events::ProjectRegisteredPayload {
                 project_id,
                 name: "Test Project".to_string(),
+                tx_id: None,
             },
         ))?,
         ai_brains_events::constructors::EventBuilder::new(
@@ -52,6 +53,7 @@ async fn test_nightly_summarizes_session() -> Result<(), Box<dyn std::error::Err
         .build(Payload::SessionStarted(SessionStartedPayload {
             session_id,
             project_id,
+            tx_id: None,
         }))?,
         ai_brains_events::constructors::EventBuilder::new(
             ai_brains_events::AggregateType::Session,
@@ -63,6 +65,7 @@ async fn test_nightly_summarizes_session() -> Result<(), Box<dyn std::error::Err
         .build(Payload::UserPromptRecorded(UserPromptRecordedPayload {
             session_id,
             content: "Hello".to_string(),
+            tx_id: None,
         }))?,
         ai_brains_events::constructors::EventBuilder::new(
             ai_brains_events::AggregateType::Session,

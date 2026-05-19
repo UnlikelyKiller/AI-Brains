@@ -1,0 +1,19 @@
+**Findings**
+
+- **Critical:** IPC sync records are not appended to the SQLCipher event log. `ai-brainsd` builds a `DaemonWriter` with only a spool dir, then `process_sync` uses `MemorySink` and only extends an in-memory `events` vector. No `SqliteEventStore`/`append_event` path is wired, so Named Pipe `Sync` requests disappear after process exit and violate canonical event sourcing. See [main.rs](C:/dev/ai-brains/crates/ai-brainsd/src/main.rs:14), [lib.rs](C:/dev/ai-brains/crates/ai-brainsd/src/lib.rs:193), [lib.rs](C:/dev/ai-brains/crates/ai-brainsd/src/lib.rs:219).
+
+- **Critical:** The `Payload` serde encoding was changed from the existing internally tagged `PascalCase` shape to adjacent tagged `snake_case`. Existing immutable `payload_json` rows will no longer deserialize/replay as before, which is an event-log compatibility break. This is especially risky because replay/projections depend on deserializing historical events. See [payload.rs](C:/dev/ai-brains/crates/ai-brains-events/src/payload.rs:126).
+
+- **High:** Named Pipe request handling is not safe for real IPC payloads. It does a single `read` into a 16 KiB buffer and immediately deserializes, so larger or fragmented JSON messages fail/truncate. There is no length prefix, newline framing, EOF read loop, or max-size policy. See [main.rs](C:/dev/ai-brains/crates/ai-brainsd/src/main.rs:39) and [main.rs](C:/dev/ai-brains/crates/ai-brainsd/src/main.rs:45).
+
+- **High:** The daemon creates each pipe instance with `.first_pipe_instance(true)` inside the accept loop. Once a client is connected and the handler task is still alive, the next loop iteration can fail creating another “first” instance, so concurrency and continued service after a connection are fragile. See [main.rs](C:/dev/ai-brains/crates/ai-brainsd/src/main.rs:19) and [main.rs](C:/dev/ai-brains/crates/ai-brainsd/src/main.rs:21).
+
+- **High:** New `tx_id` fields are stored in event payloads but not projected anywhere. There are no `tx_id` columns/indexes in store migrations, and project/session/turn/memory projections ignore the field. That means ChangeGuard-linked records cannot be queried or blended from projections despite Phase 17 requiring the new payload fields to be handled. See [payload.rs](C:/dev/ai-brains/crates/ai-brains-events/src/payload.rs:18), [project.rs](C:/dev/ai-brains/crates/ai-brains-store/src/projections/project.rs:18), [session.rs](C:/dev/ai-brains/crates/ai-brains-store/src/projections/session.rs:20), [turn.rs](C:/dev/ai-brains/crates/ai-brains-store/src/projections/turn.rs:17).
+
+- **Medium:** External record privacy is applied per ingested turn, but aggregate session privacy does not inherit the strictest later external record. `SessionStarted` inserts privacy once, and on conflict updates only status/updated_at. If a session starts as `CloudOk` and later receives a `Sealed` bridge record, `session_projection.privacy` remains too permissive. See [session.rs](C:/dev/ai-brains/crates/ai-brains-store/src/projections/session.rs:22) and [session.rs](C:/dev/ai-brains/crates/ai-brains-store/src/projections/session.rs:24).
+
+- **Medium:** `BridgeRecord.direction` is not enforced consistently. CLI comments say only inbound records are pulled, but no filter exists; daemon accepts all directions. Outbound records can be ingested back into AI-Brains as assistant turns. See [sync.rs](C:/dev/ai-brains/crates/ai-brains-cli/src/commands/sync.rs:44), [sync.rs](C:/dev/ai-brains/crates/ai-brains-cli/src/commands/sync.rs:61), [lib.rs](C:/dev/ai-brains/crates/ai-brainsd/src/lib.rs:195).
+
+**Notes**
+
+I did not modify files. I also did not run the Rust test suite because this environment is read-only and cargo would need to write build artifacts. Event-log immutability triggers are still present for the canonical `events` table, but the IPC path currently bypasses that table entirely.

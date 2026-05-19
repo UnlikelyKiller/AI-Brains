@@ -30,6 +30,7 @@ pub enum EventKind {
     ConflictDetected,
     RecipePromoted,
     MemorySynthesized,
+    FeedbackMetric,
 
     // Catch-all for forward compatibility
     #[serde(other)]

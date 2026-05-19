@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use ai_brains_core::ids::MemoryId;
+use ai_brains_core::ids::{MemoryId, ProjectId, SessionId};
 use ai_brains_core::privacy::Privacy;
 use ai_brains_crypto::DataKey;
 use ai_brains_events::{
@@ -31,10 +31,14 @@ pub fn store_with_memory(
     let store = SqliteEventStore::new(conn);
 
     let memory_id = MemoryId::new();
+    // Use a dummy project ID that matches what tests will use
+    let project_id = ProjectId::from_uuid(uuid::Uuid::nil());
     let payload = Payload::MemoryPinned(MemoryPinnedPayload {
         memory_id,
         content: content.to_string(),
         session_id: None,
+        project_id: Some(project_id),
+        tx_id: None,
     });
     let envelope = EventBuilder::new(
         AggregateType::Memory,
@@ -50,12 +54,13 @@ pub fn store_with_memory(
 
 pub fn append_active_session(
     store: &SqliteEventStore,
-) -> Result<String, Box<dyn std::error::Error>> {
-    let session_id = ai_brains_core::ids::SessionId::new();
-    let project_id = ai_brains_core::ids::ProjectId::new();
+) -> Result<(SessionId, ProjectId), Box<dyn std::error::Error>> {
+    let session_id = SessionId::new();
+    let project_id = ProjectId::from_uuid(uuid::Uuid::nil());
     let project_payload = Payload::ProjectRegistered(ProjectRegisteredPayload {
         project_id,
         name: "test-project".to_string(),
+        tx_id: None,
     });
     let project_envelope = EventBuilder::new(
         AggregateType::Project,
@@ -70,6 +75,7 @@ pub fn append_active_session(
     let payload = Payload::SessionStarted(SessionStartedPayload {
         session_id,
         project_id,
+        tx_id: None,
     });
     let envelope = EventBuilder::new(
         AggregateType::Session,
@@ -80,7 +86,7 @@ pub fn append_active_session(
     )
     .build(payload)?;
     store.append_event(&envelope)?;
-    Ok(session_id.to_string())
+    Ok((session_id, project_id))
 }
 
 pub fn append_turn(
@@ -90,16 +96,18 @@ pub fn append_turn(
     content: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let uuid = uuid::Uuid::parse_str(session_id)?;
-    let session_id = ai_brains_core::ids::SessionId::from_uuid(uuid);
+    let session_id = SessionId::from_uuid(uuid);
     let payload = if role == "user" {
         Payload::UserPromptRecorded(ai_brains_events::payload::UserPromptRecordedPayload {
             session_id,
             content: content.to_string(),
+            tx_id: None,
         })
     } else {
         Payload::AssistantFinalRecorded(ai_brains_events::payload::AssistantFinalRecordedPayload {
             session_id,
             content: content.to_string(),
+            tx_id: None,
         })
     };
 

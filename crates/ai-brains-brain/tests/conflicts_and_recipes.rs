@@ -41,6 +41,7 @@ async fn test_conflict_and_recipe_detection() -> Result<(), Box<dyn std::error::
     .build(Payload::ProjectRegistered(ProjectRegisteredPayload {
         project_id,
         name: "Test Project".to_string(),
+        tx_id: None,
     }))?;
     event_store.append_event(&reg_event)?;
 
@@ -57,6 +58,8 @@ async fn test_conflict_and_recipe_detection() -> Result<(), Box<dyn std::error::
         memory_id,
         content: "Always use port 8080 for the dev server.".to_string(),
         session_id: None,
+        project_id: None,
+        tx_id: None,
     }))?;
     event_store.append_event(&mem_event)?;
 
@@ -72,6 +75,7 @@ async fn test_conflict_and_recipe_detection() -> Result<(), Box<dyn std::error::
     .build(Payload::SessionStarted(SessionStartedPayload {
         session_id,
         project_id,
+        tx_id: None,
     }))?;
     event_store.append_event(&start_event)?;
 
@@ -85,6 +89,7 @@ async fn test_conflict_and_recipe_detection() -> Result<(), Box<dyn std::error::
     .build(Payload::UserPromptRecorded(UserPromptRecordedPayload {
         session_id,
         content: "We decided to change the dev port to 9000 because 8080 is blocked by the new security policy. Also, here is the workaround: 1. Stop service. 2. Run port-fix.ps1. 3. Restart.".to_string(),
+        tx_id: None,
     }))?;
     event_store.append_event(&prompt_event)?;
 

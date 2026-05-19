@@ -27,6 +27,7 @@ pub fn ingest_request(role: &str, content: &str) -> IngestRequest {
         content: content.to_string(),
         privacy: Privacy::CloudOk,
         thinking: None,
+        tx_id: None,
     }
 }
 
@@ -71,6 +72,7 @@ pub fn start_command() -> ai_brains_capture::SessionStartCommand {
         project_id: ProjectId::new(),
         harness_id: HarnessId::new(),
         privacy: Privacy::CloudOk,
+        tx_id: None,
     }
 }
 

@@ -41,6 +41,7 @@ async fn test_cross_agent_synthesis_level_2() -> Result<(), Box<dyn std::error::
     .build(Payload::ProjectRegistered(ProjectRegisteredPayload {
         project_id,
         name: "Test Project".to_string(),
+        tx_id: None,
     }))?;
     event_store.append_event(&reg_event)?;
 

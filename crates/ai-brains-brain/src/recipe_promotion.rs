@@ -25,7 +25,7 @@ impl RecipePromotionService {
 
     pub async fn promote_recipes(
         &self,
-        session_id: &SessionId,
+        _session_id: &SessionId,
         summary: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
         // 1. Check if the session contains a "how-to" or a "workaround" that should be a recipe
@@ -91,8 +91,9 @@ impl RecipePromotionService {
         .build(Payload::RecipePromoted(RecipePromotedPayload {
             recipe_id,
             name,
+            content: steps.join("\n"),
             steps,
-            source_session_ids: vec![*session_id],
+            source_memory_ids: Vec::new(), // Link to source memories if we had them
         }))?;
 
         self.event_store.append_event(&event)?;

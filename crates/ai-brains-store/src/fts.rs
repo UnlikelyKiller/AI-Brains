@@ -21,17 +21,29 @@ impl<'a> FtsSearch<'a> {
 
     pub fn search(&self, query: &str, project_id: Option<Uuid>) -> Result<Vec<SearchResult>> {
         let mut results = Vec::new();
-        // T06 exposes memory content search before memory-to-project linkage is projected.
-        // Preserve the API shape by returning a null project_id until that schema lands.
-        let _ = project_id;
-        let mut stmt = self.conn.prepare(
-            "SELECT memory_id, NULL AS project_id, content AS content_markdown
-             FROM memory_fts
-             WHERE memory_fts MATCH ?
-             ORDER BY rank",
-        )?;
 
-        let mut rows = stmt.query(params![query])?;
+        let (sql, params_vec) = if let Some(pid) = project_id {
+            (
+                "SELECT f.memory_id, p.project_id, f.content AS content_markdown
+                 FROM memory_fts f
+                 JOIN memory_projection p ON f.memory_id = p.memory_id
+                 WHERE memory_fts MATCH ? AND p.project_id = ?
+                 ORDER BY rank",
+                params![query, pid.to_string()],
+            )
+        } else {
+            (
+                "SELECT f.memory_id, p.project_id, f.content AS content_markdown
+                 FROM memory_fts f
+                 JOIN memory_projection p ON f.memory_id = p.memory_id
+                 WHERE memory_fts MATCH ?
+                 ORDER BY rank",
+                params![query],
+            )
+        };
+
+        let mut stmt = self.conn.prepare(sql)?;
+        let mut rows = stmt.query(params_vec)?;
 
         while let Some(row) = rows.next()? {
             let memory_id: String = row.get(0)?;
@@ -49,6 +61,8 @@ impl<'a> FtsSearch<'a> {
     }
 }
 
+/// Unscoped search for backward compatibility in tests.
+/// Production code should use FtsSearch directly with a ProjectId.
 pub fn search_memory(conn: &Connection, query: &str) -> Result<Vec<SearchResult>> {
     let fts = FtsSearch::new(conn);
     fts.search(query, None)

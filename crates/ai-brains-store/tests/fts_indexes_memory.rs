@@ -34,6 +34,8 @@ fn test_fts_indexes_memory() {
         memory_id,
         content: "The specific architectural nuance of event sourcing is immutability.".to_string(),
         session_id: None,
+        project_id: None,
+        tx_id: None,
     });
 
     let envelope = EventBuilder::new(

@@ -18,6 +18,7 @@ pub fn build_assistant_final(
         AssistantFinalRecordedPayload {
             session_id: request.session_id,
             content: request.content.clone(),
+            tx_id: request.tx_id.clone(),
         },
     ))
     .map_err(Into::into)

@@ -17,12 +17,19 @@ impl Projection for ProjectProjection {
         match &envelope.payload {
             Payload::ProjectRegistered(p) => {
                 tx.execute(
-                    "INSERT INTO project_projection (project_id, name, created_at, updated_at)
-                     VALUES (?, ?, ?, ?)
+                    "INSERT INTO project_projection (project_id, name, tx_id, created_at, updated_at)
+                     VALUES (?, ?, ?, ?, ?)
                      ON CONFLICT(project_id) DO UPDATE SET
                         name = excluded.name,
+                        tx_id = COALESCE(excluded.tx_id, project_projection.tx_id),
                         updated_at = excluded.updated_at",
-                    rusqlite::params![p.project_id.to_string(), p.name, occurred_at, occurred_at],
+                    rusqlite::params![
+                        p.project_id.to_string(),
+                        p.name,
+                        p.tx_id.as_ref().map(|t| t.to_string()),
+                        occurred_at,
+                        occurred_at
+                    ],
                 )?;
             }
             Payload::ProjectAliasAdded(p) => {

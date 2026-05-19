@@ -43,6 +43,8 @@ async fn test_forget_excludes_from_search() -> Result<(), Box<dyn std::error::Er
             memory_id,
             content: "Remember this secret recipe.".to_string(),
             session_id: None,
+            project_id: None,
+            tx_id: None,
         },
     ))?;
     event_store.append_event(&event)?;
@@ -102,6 +104,7 @@ async fn test_retention_removes_old_turns() -> Result<(), Box<dyn std::error::Er
         ai_brains_events::ProjectRegisteredPayload {
             project_id,
             name: "Test".to_string(),
+            tx_id: None,
         },
     ))?;
     event_store.append_event(&reg)?;
@@ -116,6 +119,7 @@ async fn test_retention_removes_old_turns() -> Result<(), Box<dyn std::error::Er
     .build(Payload::SessionStarted(SessionStartedPayload {
         session_id,
         project_id,
+        tx_id: None,
     }))?;
     event_store.append_event(&start)?;
 
@@ -129,6 +133,7 @@ async fn test_retention_removes_old_turns() -> Result<(), Box<dyn std::error::Er
     .build(Payload::UserPromptRecorded(UserPromptRecordedPayload {
         session_id,
         content: "Old turn".to_string(),
+        tx_id: None,
     }))?;
     event_store.append_event(&prompt)?;
 

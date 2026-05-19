@@ -10,8 +10,13 @@ repository.workspace = true
 ai-brains-capture = { path = "../ai-brains-capture" }
 ai-brains-contracts = { path = "../ai-brains-contracts" }
 ai-brains-core = { path = "../ai-brains-core" }
+ai-brains-crypto = { path = "../ai-brains-crypto" }
 ai-brains-daemon-api = { path = "../ai-brains-daemon-api" }
 ai-brains-events = { path = "../ai-brains-events" }
+ai-brains-store = { path = "../ai-brains-store" }
+dirs = "5.0"
+dotenvy = "0.15"
+serde = { workspace = true }
 serde_json.workspace = true
 tokio.workspace = true
 uuid.workspace = true
