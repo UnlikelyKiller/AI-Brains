@@ -29,4 +29,9 @@ pub trait QueryStore: std::marker::Send + std::marker::Sync {
         &self,
         project_id: Option<ai_brains_core::ids::ProjectId>,
     ) -> Result<Vec<(String, String)>>;
+    fn resolve_project_id_from_alias(
+        &self,
+        alias: &str,
+    ) -> Result<Option<ai_brains_core::ids::ProjectId>>;
+    fn get_max_turn_index(&self, session_id: &SessionId) -> Result<Option<i32>>;
 }

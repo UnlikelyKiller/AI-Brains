@@ -1,8 +1,10 @@
 use ai_brains_crypto::SqlCipherKey;
 use ai_brains_events::constructors::EventBuilder;
-use ai_brains_events::{Actor, AggregateType, EventKind, Payload, ProjectRegisteredPayload};
+use ai_brains_events::{
+    Actor, AggregateType, EventKind, Payload, ProjectAliasAddedPayload, ProjectRegisteredPayload,
+};
 use ai_brains_store::connection::VaultConnection;
-use ai_brains_store::EventStore;
+use ai_brains_store::{EventStore, QueryStore};
 use rusqlite::params;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -36,6 +38,43 @@ impl AppContext {
             _key: key,
             conn: Arc::new(conn),
         })
+    }
+
+    /// Resolves a project ID from an alias (e.g. Antigravity projectHash).
+    /// If the alias is not found, it returns None.
+    pub fn resolve_project_id_from_alias(
+        &self,
+        alias: &str,
+    ) -> Result<Option<ai_brains_core::ids::ProjectId>, Box<dyn std::error::Error>> {
+        let pid = self.conn.resolve_project_id_from_alias(alias)?;
+        Ok(pid)
+    }
+
+    /// Links an alias to a project ID if it doesn't already exist.
+    pub fn ensure_project_alias(
+        &self,
+        sink: &mut StoreSink,
+        project_id: ai_brains_core::ids::ProjectId,
+        alias: String,
+        privacy: ai_brains_core::privacy::Privacy,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let existing = self.conn.resolve_project_id_from_alias(&alias)?;
+        if existing.is_none() {
+            let event = EventBuilder::new(
+                AggregateType::Project,
+                project_id.as_uuid(),
+                EventKind::ProjectAliasAdded,
+                Actor::User(ai_brains_core::ids::UserId::new()),
+                privacy,
+            )
+            .build(Payload::ProjectAliasAdded(ProjectAliasAddedPayload {
+                project_id,
+                alias,
+            }))?;
+
+            sink.store.append_event(&event)?;
+        }
+        Ok(())
     }
 
     #[allow(clippy::too_many_arguments)]

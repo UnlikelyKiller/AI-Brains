@@ -7,6 +7,10 @@ description: "Use this skill when you want a cross-model code review, a second o
 
 Different AI models catch different issues. Use Codex (GPT-based) as an independent read-only reviewer to supplement Claude-based development. This is especially valuable before committing high-risk changes, after substantial refactors, or when the ChangeGuard impact report shows elevated risk.
 
+**Preferred Models (May 2026):**
+- **`gpt-5.5-thinking`**: Best for reasoning and identifying architectural drift. (Default)
+- **`gpt-5.3-codex`**: Best for dense code analysis and large diffs (1M token context).
+
 ## When To Use
 
 - Before committing high-risk changes (ARCHITECTURE, FEATURE, SECURITY categories)
@@ -21,7 +25,7 @@ Different AI models catch different issues. Use Codex (GPT-based) as an independ
 Run a non-interactive read-only review:
 
 ```powershell
-codex exec -C "." -s read-only -m o3-mini -o review.md "Review the current phase of work. Compare the current git diff against the base branch, identify bugs, regressions, missing tests, risky patterns (panics, unwraps), and unclear assumptions regarding Event Sourcing or CQRS. Do not modify files. Give findings ordered by severity (critical/high/medium/low)."
+codex exec -C "." -s read-only -m gpt-5.5-thinking -o review.md "Review the current phase of work. Compare the current git diff against the base branch, identify bugs, regressions, missing tests, risky patterns (panics, unwraps), and unclear assumptions regarding Event Sourcing or CQRS. Do not modify files. Give findings ordered by severity (critical/high/medium/low)."
 ```
 
 ## ChangeGuard-Aware Review
@@ -29,7 +33,7 @@ codex exec -C "." -s read-only -m o3-mini -o review.md "Review the current phase
 Include ChangeGuard signals in the review prompt:
 
 ```powershell
-codex exec -C "." -s read-only -m o3-mini -o review.md "Run 'changeguard impact --summary' to see the current risk level. Then review the git diff with that risk context. Focus on: (1) files with high hotspot scores, (2) unintended couplings between ai-brains-capture and ai-brains-models, (3) SQLCipher migration logic. Do not modify files."
+codex exec -C "." -s read-only -m gpt-5.5-thinking -o review.md "Run 'changeguard impact --summary' to see the current risk level. Then review the git diff with that risk context. Focus on: (1) files with high hotspot scores, (2) unintended couplings between ai-brains-capture and ai-brains-models, (3) SQLCipher migration logic. Do not modify files."
 ```
 
 ## Review Checklist for AI-Brains

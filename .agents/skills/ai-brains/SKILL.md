@@ -17,6 +17,11 @@ This skill requires the `ai-brains` CLI tool.
 1. **Check**: Run `ai-brains --version`. If it prints usage info, the CLI is available.
 2. **Fallback**: If the CLI is not found, inform the user that ai-brains needs to be installed. Proceed with manual context gathering (README, Cargo.toml, entry points) and do not attempt further vault commands.
 
+## Infrastructure Invariants (May 2026)
+- **Ultra-Fast Handshake**: The CLI performs an async Ping/Pong handshake with the daemon in **<10ms**.
+- **Fast-Fail**: Daemon-dependent commands (like `sync query`) return `exit 1` immediately if the daemon is unreachable.
+- **Structured Errors**: All CLI failures emit structured JSON objects (`ApiResult::error`) to stderr.
+
 ## Workflow Phases
 
 ### Phase 1: Orient (What do I already know?)
@@ -54,6 +59,13 @@ Trigger when a memory is wrong, outdated, or was created for testing.
 - **List**: `ai-brains forget --list-forgotten` — shows all forgotten memories.
 - **Restore**: `ai-brains forget --restore <uuid>` — un-forgets a memory via compensating event.
 
+## Integration & Automation
+
+### Antigravity (`agy`) CLI
+The system supports the new `agy` CLI via real-time hooks and multi-path discovery.
+- **agy-hook**: Triggered by `agy` to push turns into the vault. Enforces privacy filtering (user/assistant only).
+- **Expanded Import**: `ai-brains antigravity-import` scans tool-specific brain dirs and project-specific tmp chat folders (`session-*.jsonl`).
+
 ## Maintenance
 For batch reconciliation across sessions and to update the relational graph, run:
 `ai-brains nightly`
@@ -68,13 +80,13 @@ For batch reconciliation across sessions and to update the relational graph, run
 
 | Action | Command |
 |---|---|
-| Initialize Context | `ai-brains context` (use `--show` to view, `--new-session` to reset) |
+| Initialize Context | `ai-brains context` (use `--show` to view, `--new-session` reset) |
 | Sync Safety Signals | `ai-brains safety sync` (use `--dry-run` to preview) |
 | Get Orientation | `ai-brains preflight` (use `--pretty` for readable text) |
 | Deep Search | `ai-brains recall` (use `--format pretty` for readable results) |
-| Pinned Record | `ai-brains pin` (use `--tag` for categories, `--stdin` for piped content) |
-| Forget Memory | `ai-brains forget` (use `--match` for content search, `--restore` to undo) |
-| Ingest Turn | `ai-brains ingest` (reads JSON from stdin — not for interactive use) |
-| Nightly Sweep | `ai-brains nightly` (heavy batch op. Use `--schedule` to automate) |
-| Import Antigravity | `ai-brains antigravity-import --days 30` (imports recent Antigravity logs) |
+| Pinned Record | `ai-brains pin` (use `--tag` for categories, `--stdin` piped) |
+| Forget Memory | `ai-brains forget` (use `--match` for search, `--restore` undo) |
+| agy Capture Hook | `ai-brains agy-hook --payload "{...}"` (used by agy CLI hooks) |
+| Import Antigravity | `ai-brains antigravity-import --days 30` (scans multi-path brain/tmp) |
+| Nightly Sweep | `ai-brains nightly` (summarization + graph rebuild) |
 | Backup Vault | `ai-brains backup` (use `backup restore <path>` to recover) |

@@ -4,8 +4,8 @@ use serde::Deserialize;
 struct ChangeGuardHotspot {
     path: String,
     score: f64,
-    complexity: u32,
-    frequency: u32,
+    complexity: f64,
+    frequency: f64,
 }
 
 pub fn run(
@@ -148,8 +148,8 @@ fn fetch_hotspots_text(limit: usize) -> Result<Vec<ChangeGuardHotspot>, String> 
         if parts.len() >= 6 {
             if let (Ok(score), Ok(frequency), Ok(complexity)) = (
                 parts[2].parse::<f64>(),
-                parts[3].parse::<u32>(),
-                parts[4].parse::<u32>(),
+                parts[3].parse::<f64>(),
+                parts[4].parse::<f64>(),
             ) {
                 let path = parts[5].to_string();
                 if !path.is_empty() && path != "File Path" {

@@ -70,6 +70,7 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror 2.0.18",
  "uuid",
 ]
@@ -125,6 +126,7 @@ dependencies = [
  "ai-brains-contracts",
  "ai-brains-core",
  "ai-brains-crypto",
+ "ai-brains-daemon-api",
  "ai-brains-events",
  "ai-brains-graph",
  "ai-brains-models",
@@ -337,7 +339,9 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "tempfile",
  "tokio",
+ "tracing",
  "uuid",
 ]
 

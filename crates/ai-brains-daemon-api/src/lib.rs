@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "payload", rename_all = "snake_case")]
 pub enum DaemonRequest {
+    Ping,
     Ingest(IngestRequest),
     Sync(BridgeRecord),
 }
@@ -12,6 +13,8 @@ pub enum DaemonRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", content = "payload", rename_all = "snake_case")]
 pub enum DaemonResponse {
+    Pong,
     Ingest(IngestResponse),
     Sync { success: bool },
+    Error(ai_brains_contracts::response::ApiError),
 }

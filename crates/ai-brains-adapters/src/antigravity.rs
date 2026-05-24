@@ -1,5 +1,5 @@
 use crate::capability::{AdapterCapability, CapabilityLevel};
-use crate::errors::{AdapterError, Result};
+use crate::errors::Result;
 use ai_brains_capture::{CaptureContext, CaptureService, CaptureSink, SessionStopStatus};
 use ai_brains_contracts::ingest::IngestRequest;
 use ai_brains_core::ids::{HarnessId, ProjectId, SessionId, TurnId};
@@ -49,27 +49,53 @@ pub struct AntigravityTurn {
 /// Discover Antigravity brain directories containing overview.txt files.
 /// Scans ~/.gemini/antigravity/brain/ for subdirectories with
 /// .system_generated/logs/overview.txt. Also scans WSL paths.
-pub fn discover_sessions() -> Result<Vec<PathBuf>> {
-    let mut all_sessions = Vec::new();
+pub fn discover_sessions() -> Result<Vec<AntigravitySessionSource>> {
+    let mut all_sources = Vec::new();
 
-    // Windows-side Antigravity
+    // Windows-side Home Dir
     if let Some(home) = dirs::home_dir() {
-        let windows_brain = home.join(".gemini").join("antigravity").join("brain");
-        if windows_brain.exists() {
-            scan_brain_dir(&windows_brain, &mut all_sessions)?;
+        let gemini_base = home.join(".gemini");
+
+        // 1. Tool Brain Directories
+        let tool_dirs = vec!["antigravity", "antigravity-cli", "antigravity-ide"];
+        for tool in tool_dirs {
+            let brain_path = gemini_base.join(tool).join("brain");
+            if brain_path.exists() {
+                scan_brain_dir(&brain_path, &mut all_sources)?;
+            }
+        }
+
+        // 2. Project Temp Directories
+        let tmp_path = gemini_base.join("tmp");
+        if tmp_path.exists() {
+            scan_tmp_dirs(&tmp_path, &mut all_sources)?;
         }
     }
 
-    // WSL-side Antigravity (Ubuntu)
+    // WSL-side Antigravity (Ubuntu) - Legacy Support
     let wsl_brain = PathBuf::from(r"\\wsl$\Ubuntu\home\ryan\.gemini\antigravity\brain");
     if wsl_brain.exists() {
-        scan_brain_dir(&wsl_brain, &mut all_sessions)?;
+        scan_brain_dir(&wsl_brain, &mut all_sources)?;
     }
 
-    Ok(all_sessions)
+    Ok(all_sources)
 }
 
-fn scan_brain_dir(brain_dir: &Path, sessions: &mut Vec<PathBuf>) -> Result<()> {
+#[derive(Debug, Clone)]
+pub enum AntigravityFormat {
+    BrainLog,    // overview.txt or transcript.jsonl
+    ProjectChat, // session-*.jsonl
+}
+
+#[derive(Debug, Clone)]
+pub struct AntigravitySessionSource {
+    pub path: PathBuf,
+    pub session_id: String,
+    pub format: AntigravityFormat,
+    pub project_hash: Option<String>,
+}
+
+fn scan_brain_dir(brain_dir: &Path, sources: &mut Vec<AntigravitySessionSource>) -> Result<()> {
     let entries = std::fs::read_dir(brain_dir)?;
     for entry in entries {
         let entry = entry?;
@@ -77,12 +103,79 @@ fn scan_brain_dir(brain_dir: &Path, sessions: &mut Vec<PathBuf>) -> Result<()> {
         if !path.is_dir() {
             continue;
         }
+
+        let session_id = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .map(|s| s.to_string())
+            .unwrap_or_default();
+
+        // Check for overview.txt (legacy)
         let overview = path
             .join(".system_generated")
             .join("logs")
             .join("overview.txt");
         if overview.exists() {
-            sessions.push(overview);
+            sources.push(AntigravitySessionSource {
+                path: overview,
+                session_id: session_id.clone(),
+                format: AntigravityFormat::BrainLog,
+                project_hash: None,
+            });
+        }
+
+        // Check for transcript.jsonl (new agy)
+        let transcript = path
+            .join(".system_generated")
+            .join("logs")
+            .join("transcript.jsonl");
+        if transcript.exists() {
+            sources.push(AntigravitySessionSource {
+                path: transcript,
+                session_id,
+                format: AntigravityFormat::BrainLog,
+                project_hash: None,
+            });
+        }
+    }
+    Ok(())
+}
+
+fn scan_tmp_dirs(tmp_base: &Path, sources: &mut Vec<AntigravitySessionSource>) -> Result<()> {
+    let project_entries = std::fs::read_dir(tmp_base)?;
+    for project_entry in project_entries {
+        let project_entry = project_entry?;
+        let project_path = project_entry.path();
+        if !project_path.is_dir() {
+            continue;
+        }
+
+        let project_hash = project_path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .map(|s| s.to_string());
+
+        let chats_dir = project_path.join("chats");
+        if chats_dir.exists() {
+            let chat_entries = std::fs::read_dir(chats_dir)?;
+            for chat_entry in chat_entries {
+                let chat_entry = chat_entry?;
+                let chat_path = chat_entry.path();
+                if chat_path.is_file() && chat_path.extension().is_some_and(|ext| ext == "jsonl") {
+                    let session_id = chat_path
+                        .file_stem()
+                        .and_then(|n| n.to_str())
+                        .map(|s| s.replace("session-", ""))
+                        .unwrap_or_default();
+
+                    sources.push(AntigravitySessionSource {
+                        path: chat_path,
+                        session_id,
+                        format: AntigravityFormat::ProjectChat,
+                        project_hash: project_hash.clone(),
+                    });
+                }
+            }
         }
     }
     Ok(())
@@ -254,34 +347,116 @@ fn extract_xml_content(content: &str, tag: &str) -> Option<String> {
     Some(content[start + open.len()..end].trim().to_string())
 }
 
-/// Orchestrates the import of Antigravity sessions.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectChatTurn {
+    #[allow(dead_code)]
+    pub id: String,
+    #[serde(rename = "type")]
+    pub turn_type: String, // e.g. "user", "gemini", "claude"
+    pub content: String,
+    #[allow(dead_code)]
+    pub thoughts: Option<String>,
+}
+
+/// Parse a project-specific session-*.jsonl file.
+pub fn parse_project_chat_file(path: &Path) -> Result<Vec<AntigravityTurn>> {
+    let content = std::fs::read_to_string(path)?;
+    let mut turns = Vec::new();
+
+    let mut lines = content.lines();
+    // Skip header line
+    let _header = lines.next();
+
+    for line in lines {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        if let Ok(turn) = serde_json::from_str::<ProjectChatTurn>(line) {
+            // Capture Privacy Mandate: Only capture user and known model roles.
+            // Ignore tool_output, system, and other internal events.
+            let role = match turn.turn_type.as_str() {
+                "user" => Some("user"),
+                "gemini" | "claude" | "gpt-3.5-turbo" | "gpt-4" | "gpt-4o" | "gpt-5.3-codex"
+                | "gpt-5.5-thinking" => Some("assistant"),
+                _ => None,
+            };
+
+            if let Some(role) = role {
+                // Apply mandate #4 (log only final assistant response, skip internal thoughts)
+                if !turn.content.trim().is_empty() {
+                    turns.push(AntigravityTurn {
+                        role: role.to_string(),
+                        content: turn.content,
+                        created_at: None, // Timestamps are in header or not easily per-turn
+                    });
+                }
+            }
+        }
+    }
+
+    Ok(turns)
+}
+
+/// Orchestrates the import of Antigravity sessions from all discovered locations.
+#[allow(clippy::disallowed_methods)]
 pub fn import_antigravity_sessions<S: CaptureSink>(
     query_store: &dyn ai_brains_store::QueryStore,
     service: &CaptureService,
     sink: &mut S,
     days: usize,
-    project_id: ProjectId,
+    default_project_id: ProjectId,
 ) -> Result<(usize, usize)> {
-    let all_sessions = discover_sessions()?;
-    if all_sessions.is_empty() {
+    let all_sources = discover_sessions()?;
+    if all_sources.is_empty() {
         return Ok((0, 0));
     }
 
-    let recent_sessions = filter_recent_sessions(&all_sessions, days);
-    if recent_sessions.is_empty() {
+    // Filter by recency (optional, but good for performance)
+    let recent_sources: Vec<AntigravitySessionSource> = all_sources
+        .into_iter()
+        .filter(|s| {
+            if let Ok(metadata) = std::fs::metadata(&s.path) {
+                if let Ok(modified) = metadata.modified() {
+                    let cutoff =
+                        SystemTime::now() - Duration::from_secs(days as u64 * 24 * 60 * 60);
+                    return modified >= cutoff;
+                }
+            }
+            false
+        })
+        .collect();
+
+    let source_count = recent_sources.len();
+    if source_count == 0 {
         return Ok((0, 0));
     }
+    eprintln!(
+        "[Antigravity] Found {} sessions modified in the last {} days. Scanning for new turns...",
+        source_count, days
+    );
 
-    // Canonical Antigravity Harness ID
+    // Canonical Antigravity Harness IDs
     let antigravity_harness = HarnessId::from_str("00000000-0000-0000-0000-000000000001")
-        .map_err(|e| AdapterError::Other(format!("Invalid canonical harness ID: {}", e)))?;
+        .map_err(|e| crate::errors::AdapterError::Other(format!("Invalid static ID: {}", e)))?;
+    let agy_harness = HarnessId::from_str("00000000-0000-0000-0000-000000000002")
+        .map_err(|e| crate::errors::AdapterError::Other(format!("Invalid static ID: {}", e)))?;
 
     let mut total_turns = 0;
     let mut sessions_imported = 0;
 
-    for overview_path in &recent_sessions {
+    for (idx, source) in recent_sources.iter().enumerate() {
+        if (idx + 1) % 10 == 0 || idx == 0 || idx == source_count - 1 {
+            eprintln!(
+                "[Antigravity] Scanning session {}/{}...",
+                idx + 1,
+                source_count
+            );
+        }
+
         // Quiescence check: Skip if modified in the last 5 minutes
-        if let Ok(metadata) = std::fs::metadata(overview_path) {
+        if let Ok(metadata) = std::fs::metadata(&source.path) {
             if let Ok(modified) = metadata.modified() {
                 if SystemTime::now()
                     .duration_since(modified)
@@ -293,31 +468,39 @@ pub fn import_antigravity_sessions<S: CaptureSink>(
             }
         }
 
-        let session_id_str = match session_id_from_path(overview_path) {
-            Some(id) => id,
-            None => continue,
-        };
-
         let session_id = SessionId::from_uuid(
-            Uuid::parse_str(&session_id_str).unwrap_or_else(|_| Uuid::new_v4()),
+            Uuid::parse_str(&source.session_id).unwrap_or_else(|_| Uuid::new_v4()),
         );
 
-        // Status-aware idempotency check via QueryStore
-        if let Ok(Some(status)) = query_store.get_session_status(&session_id) {
-            if status == "completed" {
-                continue;
+        let (turns, harness_id) = match source.format {
+            AntigravityFormat::BrainLog => {
+                let steps = parse_overview_file(&source.path)?;
+                (extract_turns(&steps), antigravity_harness)
             }
-        }
-
-        let steps = match parse_overview_file(overview_path) {
-            Ok(s) => s,
-            Err(_) => continue,
+            AntigravityFormat::ProjectChat => (parse_project_chat_file(&source.path)?, agy_harness),
         };
 
-        let turns = extract_turns(&steps);
         if turns.is_empty() {
             continue;
         }
+
+        // Delta Sync: Check turn count in vault instead of session status (Requirement T49.1)
+        let max_turn = query_store.get_max_turn_index(&session_id).unwrap_or(None);
+        let next_index = max_turn.map(|m| m + 1).unwrap_or(0);
+
+        if turns.len() <= next_index as usize {
+            continue;
+        }
+
+        // Mapping: Use projectHash from source if available, else resolve/default.
+        let project_id = if let Some(ref hash) = source.project_hash {
+            query_store
+                .resolve_project_id_from_alias(hash)
+                .unwrap_or(None)
+                .unwrap_or(default_project_id)
+        } else {
+            default_project_id
+        };
 
         let capture_context = CaptureContext {
             git_working_dir: std::env::current_dir().ok(),
@@ -328,7 +511,7 @@ pub fn import_antigravity_sessions<S: CaptureSink>(
             ai_brains_capture::SessionStartCommand {
                 session_id,
                 project_id,
-                harness_id: antigravity_harness,
+                harness_id,
                 privacy: Privacy::LocalOnly,
                 tx_id: None,
             },
@@ -336,8 +519,8 @@ pub fn import_antigravity_sessions<S: CaptureSink>(
             sink,
         )?;
 
-        // Ingest each turn with deterministic Turn IDs
-        for (i, turn) in turns.iter().enumerate() {
+        // Ingest new turns only (Delta Sync)
+        for (i, turn) in turns.iter().enumerate().skip(next_index as usize) {
             let turn_id = TurnId::from_uuid(Uuid::new_v5(
                 &session_id.as_uuid(),
                 format!("turn-{}", i).as_bytes(),
@@ -346,7 +529,7 @@ pub fn import_antigravity_sessions<S: CaptureSink>(
             let request = IngestRequest {
                 session_id,
                 project_id,
-                harness_id: antigravity_harness,
+                harness_id,
                 turn_id,
                 role: turn.role.clone(),
                 content: turn.content.clone(),
@@ -362,10 +545,10 @@ pub fn import_antigravity_sessions<S: CaptureSink>(
         service.stop_session(
             ai_brains_capture::SessionStopCommand {
                 session_id,
-                harness_id: antigravity_harness,
+                harness_id,
                 privacy: Privacy::LocalOnly,
                 status: SessionStopStatus::Completed,
-                reason: Some("Antigravity batch import complete".to_string()),
+                reason: Some("Antigravity multi-path import complete".to_string()),
             },
             capture_context,
             sink,
@@ -532,6 +715,29 @@ mod tests {
         assert_eq!(turns[0].content, "hello");
         assert_eq!(turns[1].role, "assistant");
         assert_eq!(turns[1].content, "Hi there");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn parse_project_chat_file_parses_jsonl() {
+        let dir = std::env::temp_dir().join("ai-brains-test-project-chat");
+        let _ = std::fs::create_dir_all(&dir);
+        let path = dir.join("session-abc.jsonl");
+
+        let header = r#"{"sessionId":"abc","projectHash":"xyz"}"#;
+        let line1 = r#"{"id":"1","type":"user","content":"hello"}"#;
+        let line2 = r#"{"id":"2","type":"gemini","content":"hi","thoughts":"planning..."}"#;
+        let line3 = r#"{"id":"3","type":"tool_output","content":"ls output","thoughts":""}"#;
+
+        let _ = std::fs::write(&path, format!("{header}\n{line1}\n{line2}\n{line3}\n"));
+
+        let turns = parse_project_chat_file(&path).expect("parse should succeed");
+        assert_eq!(turns.len(), 2);
+        assert_eq!(turns[0].role, "user");
+        assert_eq!(turns[0].content, "hello");
+        assert_eq!(turns[1].role, "assistant");
+        assert_eq!(turns[1].content, "hi");
 
         let _ = std::fs::remove_dir_all(&dir);
     }

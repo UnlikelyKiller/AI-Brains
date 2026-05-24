@@ -1,3 +1,4 @@
+pub mod agy_hook;
 pub mod antigravity_import;
 pub mod backup;
 pub mod context;

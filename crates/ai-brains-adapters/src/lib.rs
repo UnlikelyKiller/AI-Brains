@@ -1,4 +1,5 @@
 mod adapter;
+pub mod agy;
 mod antigravity;
 mod capability;
 mod claude;

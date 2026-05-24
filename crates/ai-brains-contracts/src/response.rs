@@ -3,6 +3,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApiResult<T> {
     pub ok: bool,
+    /// Compatibility field for external tools (e.g. ChangeGuard)
+    pub status: String,
+    /// Compatibility field for external tools (flat message)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<T>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -15,6 +20,8 @@ impl<T> ApiResult<T> {
     pub fn success(data: T) -> Self {
         Self {
             ok: true,
+            status: "success".to_string(),
+            message: None,
             data: Some(data),
             error: None,
             warnings: Vec::new(),
@@ -22,8 +29,11 @@ impl<T> ApiResult<T> {
     }
 
     pub fn error(error: ApiError) -> Self {
+        let message = Some(error.message.clone());
         Self {
             ok: false,
+            status: "error".to_string(),
+            message,
             data: None,
             error: Some(error),
             warnings: Vec::new(),

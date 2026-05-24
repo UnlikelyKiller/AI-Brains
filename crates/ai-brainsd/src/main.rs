@@ -10,6 +10,8 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 #[cfg(windows)]
 use tokio::net::windows::named_pipe::ServerOptions;
 
+type BoxError = Box<dyn std::error::Error + Send + Sync>;
+
 #[tokio::main]
 #[allow(clippy::disallowed_methods)]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -39,36 +41,56 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let event_store = Arc::new(SqliteEventStore::new(conn));
     let writer = DaemonWriter::start(spool_dir, event_store.clone()).await?;
 
+    let (shutdown_tx, _shutdown_rx) = tokio::sync::broadcast::channel(1);
+
     #[cfg(windows)]
     {
         let pipe_name = r"\\.\pipe\aibrains-sync";
         println!("AI-Brains Daemon started. Listening on {}", pipe_name);
 
-        loop {
-            let server = match ServerOptions::new()
-                .first_pipe_instance(false)
-                .create(pipe_name)
-            {
-                Ok(s) => s,
-                Err(e) => {
-                    eprintln!("Failed to create named pipe instance: {}", e);
-                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-                    continue;
-                }
-            };
+        let writer_clone = writer.clone();
+        let shutdown_tx_clone = shutdown_tx.clone();
 
-            if let Err(e) = server.connect().await {
-                eprintln!("Failed to connect client: {}", e);
-                continue;
+        tokio::spawn(async move {
+            loop {
+                let server = match ServerOptions::new()
+                    .first_pipe_instance(false)
+                    .create(pipe_name)
+                {
+                    Ok(s) => s,
+                    Err(e) => {
+                        eprintln!("Failed to create named pipe instance: {}", e);
+                        tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                        continue;
+                    }
+                };
+
+                tokio::select! {
+                    res = server.connect() => {
+                        if let Err(e) = res {
+                            eprintln!("Failed to connect client: {}", e);
+                            continue;
+                        }
+
+                        let writer_inner = writer_clone.clone();
+                        let mut shutdown_rx_inner = shutdown_tx_clone.subscribe();
+                        tokio::spawn(async move {
+                            tokio::select! {
+                                _ = handle_client(server, writer_inner) => {}
+                                _ = shutdown_rx_inner.recv() => {
+                                    tracing::info!("Shutting down client connection...");
+                                }
+                            }
+                        });
+                    }
+                    _ = tokio::signal::ctrl_c() => {
+                        println!("\nShutdown signal received. Closing daemon...");
+                        let _ = shutdown_tx_clone.send(());
+                        break;
+                    }
+                }
             }
-
-            let writer_clone = writer.clone();
-            tokio::spawn(async move {
-                if let Err(e) = handle_client(server, writer_clone).await {
-                    eprintln!("Error handling client: {}", e);
-                }
-            });
-        }
+        });
     }
 
     #[cfg(not(windows))]
@@ -82,23 +104,56 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             socket_path
         );
 
-        loop {
-            match listener.accept().await {
-                Ok((stream, _addr)) => {
-                    let writer_clone = writer.clone();
-                    tokio::spawn(async move {
-                        if let Err(e) = handle_client(stream, writer_clone).await {
-                            eprintln!("Error handling client: {}", e);
+        let writer_clone = writer.clone();
+        let shutdown_tx_clone = shutdown_tx.clone();
+
+        tokio::spawn(async move {
+            loop {
+                tokio::select! {
+                    res = listener.accept() => {
+                        match res {
+                            Ok((stream, _addr)) => {
+                                let writer_inner = writer_clone.clone();
+                                let mut shutdown_rx_inner = shutdown_tx_clone.subscribe();
+                                tokio::spawn(async move {
+                                    tokio::select! {
+                                        _ = handle_client(stream, writer_inner) => {}
+                                        _ = shutdown_rx_inner.recv() => {
+                                            tracing::info!("Shutting down client connection...");
+                                        }
+                                    }
+                                });
+                            }
+                            Err(e) => {
+                                eprintln!("Failed to accept UDS connection: {}", e);
+                                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                            }
                         }
-                    });
-                }
-                Err(e) => {
-                    eprintln!("Failed to accept UDS connection: {}", e);
-                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                    }
+                    _ = tokio::signal::ctrl_c() => {
+                        println!("\nShutdown signal received. Closing daemon...");
+                        let _ = shutdown_tx_clone.send(());
+                        break;
+                    }
                 }
             }
-        }
+        });
     }
+
+    // Wait for shutdown signal in the main task too
+    let _ = tokio::signal::ctrl_c().await;
+    let _ = shutdown_tx.send(());
+
+    #[cfg(not(windows))]
+    {
+        let socket_path = "/tmp/aibrains-sync.sock";
+        let _ = std::fs::remove_file(socket_path);
+    }
+
+    // Give some time for background tasks to finish
+    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+    println!("Daemon exited cleanly.");
+    Ok(())
 }
 
 #[allow(clippy::disallowed_methods)]
@@ -150,13 +205,22 @@ where
             };
 
             if let Some(request) = request {
-                match request {
-                    DaemonRequest::Ingest(req) => {
-                        let resp = writer.ingest(req).await?;
-                        let mut payload = serde_json::to_vec(&DaemonResponse::Ingest(resp))?;
+                let result: Result<(), BoxError> = match request {
+                    DaemonRequest::Ping => {
+                        let mut payload = serde_json::to_vec(&DaemonResponse::Pong)?;
                         payload.push(b'\n');
                         server.write_all(&payload).await?;
+                        Ok(())
                     }
+                    DaemonRequest::Ingest(req) => match writer.ingest(req).await {
+                        Ok(resp) => {
+                            let mut payload = serde_json::to_vec(&DaemonResponse::Ingest(resp))?;
+                            payload.push(b'\n');
+                            server.write_all(&payload).await?;
+                            Ok(())
+                        }
+                        Err(e) => Err(e),
+                    },
                     DaemonRequest::Sync(record) => {
                         if record.record_kind == "query" {
                             let payload = record.payload_value();
@@ -174,45 +238,67 @@ where
                                 None => ai_brains_core::ids::SessionId::new(),
                             };
 
-                            let hits = writer
+                            match writer
                                 .query_memories(query_text, project_id, session_id)
-                                .await?;
+                                .await
+                            {
+                                Ok(hits) => {
+                                    let timestamp = chrono::Utc::now();
 
-                            let timestamp = chrono::Utc::now();
+                                    for h in hits {
+                                        let payload =
+                                            ai_brains_contracts::bridge::BridgePayload::Insight {
+                                                type_field: "Insight".to_string(),
+                                                memory_id: h.memory_id,
+                                                relevance: h.score.unwrap_or(1.0),
+                                                content: h.content,
+                                            };
 
-                            for h in hits {
-                                let payload = ai_brains_contracts::bridge::BridgePayload::Insight {
-                                    type_field: "Insight".to_string(),
-                                    memory_id: h.memory_id,
-                                    relevance: h.score.unwrap_or(1.0),
-                                    content: h.content,
-                                };
+                                        let resp_record = BridgeRecord {
+                                            bridge_version: "0.3".to_string(),
+                                            direction: BridgeDirection::Outbound,
+                                            timestamp,
+                                            parent_hash: None,
+                                            project_id: record.project_id.clone(),
+                                            session_id: record.session_id.clone(),
+                                            tx_id: None,
+                                            record_kind: "insight".to_string(),
+                                            payload,
+                                            privacy: ai_brains_core::privacy::Privacy::LocalOnly,
+                                        };
 
-                                let resp_record = BridgeRecord {
-                                    bridge_version: "0.3".to_string(),
-                                    direction: BridgeDirection::Outbound,
-                                    timestamp,
-                                    parent_hash: None,
-                                    project_id: record.project_id.clone(),
-                                    session_id: record.session_id.clone(),
-                                    tx_id: None,
-                                    record_kind: "insight".to_string(),
-                                    payload,
-                                    privacy: ai_brains_core::privacy::Privacy::LocalOnly,
-                                };
-
-                                let mut payload = serde_json::to_vec(&resp_record)?;
-                                payload.push(b'\n');
-                                server.write_all(&payload).await?;
+                                        let mut payload = serde_json::to_vec(&resp_record)?;
+                                        payload.push(b'\n');
+                                        server.write_all(&payload).await?;
+                                    }
+                                    server.write_all(b"\n").await?;
+                                    Ok(())
+                                }
+                                Err(e) => Err(e),
                             }
-                            server.write_all(b"\n").await?;
                         } else {
-                            writer.sync(record).await?;
-                            let mut payload =
-                                serde_json::to_vec(&DaemonResponse::Sync { success: true })?;
-                            payload.push(b'\n');
-                            server.write_all(&payload).await?;
+                            match writer.sync(record).await {
+                                Ok(_) => {
+                                    let mut payload = serde_json::to_vec(&DaemonResponse::Sync {
+                                        success: true,
+                                    })?;
+                                    payload.push(b'\n');
+                                    server.write_all(&payload).await?;
+                                    Ok(())
+                                }
+                                Err(e) => Err(e),
+                            }
                         }
+                    }
+                };
+
+                if let Err(e) = result {
+                    let api_err =
+                        ai_brains_contracts::response::ApiError::new("DAEMON_ERROR", e.to_string());
+                    let resp = DaemonResponse::Error(api_err);
+                    if let Ok(mut payload) = serde_json::to_vec(&resp) {
+                        payload.push(b'\n');
+                        let _ = server.write_all(&payload).await;
                     }
                 }
             }

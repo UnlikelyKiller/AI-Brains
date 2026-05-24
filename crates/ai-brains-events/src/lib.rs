@@ -18,7 +18,7 @@ pub use payload::{
     AssistantFinalRecordedPayload, ConflictDetectedPayload, DecisionRecordedPayload,
     FeedbackMetricPayload, IngestGateRejectedPayload, MemoryForgottenPayload, MemoryPinnedPayload,
     MemoryRestoredPayload, MemorySynthesizedPayload, Payload, PredictionRecordedPayload,
-    ProjectRegisteredPayload, RecipePromotedPayload, SessionCompletedPayload, SessionFailedPayload,
-    SessionStartedPayload, SessionSummaryCreatedPayload, UserPromptRecordedPayload,
-    VerifyOutcomeRecordedPayload,
+    ProjectAliasAddedPayload, ProjectRegisteredPayload, RecipePromotedPayload,
+    SessionCompletedPayload, SessionFailedPayload, SessionStartedPayload,
+    SessionSummaryCreatedPayload, UserPromptRecordedPayload, VerifyOutcomeRecordedPayload,
 };

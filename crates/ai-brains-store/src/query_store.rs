@@ -1,7 +1,8 @@
 use crate::connection::VaultConnection;
 use crate::errors::Result;
 use crate::QueryStore;
-use ai_brains_core::ids::{MemoryId, ProjectId};
+use ai_brains_core::ids::{MemoryId, ProjectId, SessionId};
+use rusqlite::OptionalExtension;
 use std::str::FromStr;
 
 impl QueryStore for VaultConnection {
@@ -35,19 +36,16 @@ impl QueryStore for VaultConnection {
         Ok(results)
     }
 
-    fn get_session_status(
-        &self,
-        session_id: &ai_brains_core::ids::SessionId,
-    ) -> Result<Option<String>> {
-        use rusqlite::{params, OptionalExtension};
+    fn get_session_status(&self, session_id: &SessionId) -> Result<Option<String>> {
         let conn = self.lock()?;
         let mut stmt =
             conn.prepare("SELECT status FROM session_projection WHERE session_id = ?")?;
         let status: Option<String> = stmt
-            .query_row(params![session_id.to_string()], |row| row.get(0))
+            .query_row([session_id.to_string()], |row| row.get(0))
             .optional()?;
         Ok(status)
     }
+
     fn search_memories(&self, query: &str, limit: usize) -> Result<Vec<(MemoryId, String)>> {
         let conn = self.lock()?;
         let mut stmt = conn.prepare(
@@ -141,5 +139,36 @@ impl QueryStore for VaultConnection {
             results.push(row?);
         }
         Ok(results)
+    }
+
+    fn resolve_project_id_from_alias(&self, alias: &str) -> Result<Option<ProjectId>> {
+        let conn = self.lock()?;
+        let res: Option<String> = conn
+            .query_row(
+                "SELECT project_id FROM project_alias_projection WHERE alias = ?",
+                [alias],
+                |row| row.get(0),
+            )
+            .optional()?;
+
+        match res {
+            Some(s) => Ok(Some(ProjectId::from_str(&s).map_err(|e| {
+                crate::errors::StoreError::EventReadFailed(e.to_string())
+            })?)),
+            None => Ok(None),
+        }
+    }
+
+    fn get_max_turn_index(&self, session_id: &SessionId) -> Result<Option<i32>> {
+        let conn = self.lock()?;
+        let res: Option<i32> = conn
+            .query_row(
+                "SELECT MAX(turn_index) FROM turn_projection WHERE session_id = ?",
+                [session_id.to_string()],
+                |row| row.get::<_, Option<i32>>(0),
+            )
+            .optional()?
+            .flatten();
+        Ok(res)
     }
 }

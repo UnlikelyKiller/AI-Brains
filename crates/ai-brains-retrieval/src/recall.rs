@@ -154,7 +154,8 @@ fn query_changeguard_bridge(
             }
         };
 
-        if record.record_kind.to_lowercase() != "insight" {
+        let record_kind = record.record_kind.to_lowercase();
+        if record_kind != "insight" && record_kind != "bm25_match" {
             continue;
         }
 

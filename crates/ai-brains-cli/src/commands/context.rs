@@ -2,6 +2,7 @@ use ai_brains_core::ids::{HarnessId, ProjectId, SessionId};
 use ai_brains_path::{extract_project_id_from_changeguard, find_changeguard_dir};
 
 pub fn run(
+    ctx: &crate::context::AppContext,
     new_project: bool,
     new_session: bool,
     show: bool,
@@ -97,6 +98,27 @@ pub fn run(
 
     let session_id = SessionId::new();
     let harness_id = HarnessId::new();
+    let privacy = ai_brains_core::privacy::Privacy::LocalOnly;
+
+    // Ensure project/session exists in the vault (idempotent)
+    let mut sink = crate::context::StoreSink {
+        store: ai_brains_store::SqliteEventStore::new((*ctx.conn).clone()),
+        last_error: None,
+    };
+    let service = ai_brains_capture::CaptureService::new();
+    let capture_context = ai_brains_capture::CaptureContext {
+        git_working_dir: std::env::current_dir().ok(),
+    };
+
+    ctx.ensure_project_and_session_exists(
+        &mut sink,
+        &service,
+        &capture_context,
+        project_id,
+        session_id,
+        harness_id,
+        privacy,
+    )?;
 
     let mut env_content = format!(
         "AI_BRAINS_PROJECT_ID={}\nAI_BRAINS_SESSION_ID={}\nAI_BRAINS_HARNESS_ID={}\n",
@@ -134,5 +156,13 @@ pub fn run(
     println!("Project ID: {}", project_id);
     println!("Session ID: {}", session_id);
     println!("Local .env updated successfully.");
+
+    // Auto-trigger sync pull to ingest initial signals (hotspots/ledger)
+    if !show {
+        if let Err(e) = crate::commands::sync::run_pull(ctx, None, true, true) {
+            eprintln!("Warning: Auto-triggering sync pull failed: {}", e);
+        }
+    }
+
     Ok(())
 }

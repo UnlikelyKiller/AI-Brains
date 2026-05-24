@@ -1,9 +1,9 @@
 # Conductor Master Track Board
 
 ## Project Status
-**Status:** Completed
-**Phase:** Phase 18 - True Unification [COMPLETED]
-**Current Track:** None (all tracks complete)
+**Status:** In Progress
+**Phase:** Phase 19 - Refinement and Expansion
+**Current Track:** T44
 **Verification:** Full Windows workspace gate is green as of 2026-05-19.
 
 ## Track Registry
@@ -49,20 +49,17 @@
 | T40 | Unified Retrieval & Feedback Loop | **Completed** | Orchestrator | [T40](./tracks/trackT40/spec.md) | Blended preflight/ask results; nightly sweep accuracy checks. |
 | T41 | Risk-Weighted Preflight & MADR Ingestion | **Completed** | Orchestrator | [T41](./tracks/trackT41/spec.md) | Contextual risk preflight + structured MADR ingestion from ChangeGuard. |
 | T42 | Shared Knowledge Graph & Unified Search | **Completed** | Orchestrator | [T42](./tracks/trackT42/spec.md) | CozoProxyBackend + unified IPC recall via ChangeGuard Tantivy/CozoDB. |
-| T43 | Predictive Verification Gating & Intervention | **In Progress** | Orchestrator | [T43](./tracks/trackT43/spec.md) | Ingest-final verification gate + RiskReviewAgent for proactive intervention. |
+| T43 | Predictive Verification Gating & Intervention | **Completed** | Orchestrator | [T43](./tracks/trackT43/spec.md) | Ingest-final verification gate + RiskReviewAgent for proactive intervention. |
+| T44 | System Hardening & Fast-Fail | **Completed** | Orchestrator | [T44](./tracks/trackT44/spec.md) | Ultra-fast handshake, CLI fast-fail, structured JSON errors, signal handlers. |
+| T45 | Antigravity CLI (agy) Integration | **Completed** | Orchestrator | [T45](./tracks/trackT45/spec.md) | `agy` hooks and JSONL transcript capture adapter. |
+| T46 | Multi-Path Antigravity Discovery | **Completed** | Orchestrator | [T46](./tracks/trackT46/spec.md) | Expand discovery to scan all tool-specific and project-specific chat locations. |
+| T47 | Safety Sync Hardening & Skill Alignment | **Completed** | Orchestrator | [T47](./tracks/trackT47/spec.md) | Fix floating-point parsing in safety sync and update skill instructions. |
+| T48 | Automated Project Mapping | **Pending** | Orchestrator | [T48](./tracks/trackT48/spec.md) | Map Antigravity projectHash to project_id for auto-discovery. |
+| T49 | Differential agy Ingestion | **Pending** | Orchestrator | [T49](./tracks/trackT49/spec.md) | Delta sync for agy conversations to skip existing turns. |
+| T50 | CozoDB Bridge Hardening & Unification | **Pending** | Orchestrator | [T50](./tracks/trackT50/spec.md) | Batch ingestion, unified projection, fast-fail bridge handshake, and Datalog escaping. |
 
-## Completed Phase: Phase 17 - ChangeGuard Integration
-- [x] Bidirectional structured sync with ChangeGuard via `BridgeRecord`.
-- [x] Windows Named Pipe IPC in `ai-brainsd` (`\\.\pipe\aibrains-sync`).
-- [x] Transaction linking support (`--tx-id`) in CLI context and pin.
-- [x] Auto-discovery of project IDs from `.changeguard` metadata.
-- [x] Nightly feedback loop with prediction accuracy metrics.
-- [x] Verified via CI gate and ChangeGuard ledger.
-
-## Current Phase: Phase 18 - True Unification (In Progress)
-
-- [x] **Part 1 — Unified Architectural Ledger & Risk-Weighted Preflight** (T41 + C1)
-- [x] **Part 2 — Shared Knowledge Graph & Search** (T42 + C2)
-- [x] **Part 3 — Predictive Verification Gating** (T43 + C3)
-
+## Completed Phase: Phase 19 - Refinement and Expansion
+- [x] **Track T44** - System Hardening & Fast-Fail: Ultra-fast handshake (<10ms), CLI fast-fail, structured JSON errors, and signal handlers.
+- [x] **Track T45** - Antigravity CLI (agy) Integration: `agy` hooks configuration and JSONL transcript capture adapter with privacy filtering.
+- [x] **Track T46** - Multi-Path Antigravity Discovery: Expanded discovery to scan tool-specific brain dirs and project-specific tmp folders, supporting new JSONL formats.
 Cross-repo tracks in ChangeGuard: Milestone C (C1, C2, C3). See `C:\dev\ChangeGuard\conductor\conductor.md`.

@@ -27,6 +27,7 @@ uuid = { workspace = true, features = ["v4", "v5"] }
 ai-brains-brain = { path = "../ai-brains-brain" }
 ai-brains-scheduler = { path = "../ai-brains-scheduler" }
 ai-brains-events = { path = "../ai-brains-events" }
+ai-brains-daemon-api = { path = "../ai-brains-daemon-api" }
 ai-brains-core = { path = "../ai-brains-core" }
 ai-brains-path = { path = "../ai-brains-path" }
 tokio = { workspace = true }

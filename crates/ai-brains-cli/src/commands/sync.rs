@@ -332,7 +332,7 @@ pub fn run_push(
         .args([
             "bridge",
             "import",
-            "--from",
+            "--input",
             export_path.to_string_lossy().as_ref(),
         ])
         .output();
@@ -360,11 +360,17 @@ pub fn run_push(
 }
 
 #[allow(clippy::disallowed_methods)]
-pub fn run_query(
+pub async fn run_query(
     ctx: &AppContext,
     query: String,
     format: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // Phase 0: Fast-fail if daemon is unreachable (Requirement T44.2)
+    let client = crate::daemon_client::DaemonClient::new();
+    if !client.probe(std::time::Duration::from_millis(10)).await {
+        return Err("AI-Brains daemon is not running or unreachable.".into());
+    }
+
     let fmt = format.unwrap_or_else(|| "pretty".to_string());
     if fmt == "ndjson" {
         #[cfg(feature = "graph")]

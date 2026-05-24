@@ -192,6 +192,9 @@ async fn replay_spool(
             DaemonRequest::Sync(record) => {
                 process_sync(service, store, record, Some(path)).await?;
             }
+            DaemonRequest::Ping => {
+                let _ = fs::remove_file(path).await;
+            }
         }
     }
     Ok(())

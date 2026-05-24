@@ -89,17 +89,20 @@ pub fn run(
 
     let model_url = std::env::var("AI_BRAINS_MODEL_URL")
         .unwrap_or_else(|_| "http://127.0.0.1:8081".to_string());
-    let completion_model =
-        std::env::var("AI_BRAINS_COMPLETION_MODEL").unwrap_or_else(|_| "qwen3.5-9b".to_string());
-    let embedding_model =
-        std::env::var("AI_BRAINS_EMBEDDING_MODEL").unwrap_or_else(|_| "bge-m3".to_string());
+    let completion_model = std::env::var("AI_BRAINS_COMPLETION_MODEL")
+        .unwrap_or_else(|_| "gemma-4-E4B-it-Q6_K.gguf".to_string());
+
+    let embedding_url = std::env::var("AI_BRAINS_EMBEDDING_URL")
+        .unwrap_or_else(|_| "http://127.0.0.1:8083".to_string());
+    let embedding_model = std::env::var("AI_BRAINS_EMBEDDING_MODEL")
+        .unwrap_or_else(|_| "nomic-embed-text-v1.5".to_string());
 
     let completion_provider = Arc::new(ai_brains_models::llama_cpp::LlamaCppProvider::new(
-        model_url.clone(),
+        model_url,
         completion_model,
     ));
     let embedding_provider = Arc::new(ai_brains_models::llama_cpp::LlamaCppProvider::new(
-        model_url,
+        embedding_url,
         embedding_model,
     ));
 

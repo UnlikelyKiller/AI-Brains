@@ -1,0 +1,11 @@
+{
+  "hooks": [
+    {
+      "event": "conversation_turn",
+      "action": "shell",
+      "command": "ai-brains",
+      "args": ["agy-hook", "--payload", "{{payload}}"],
+      "description": "Auto-capture agy CLI turns into AI-Brains vault"
+    }
+  ]
+}

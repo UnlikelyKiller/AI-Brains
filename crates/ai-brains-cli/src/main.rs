@@ -1,5 +1,6 @@
 mod commands;
 mod context;
+mod daemon_client;
 
 use crate::context::AppContext;
 use ai_brains_core::ids::{ProjectId, SessionId};
@@ -149,6 +150,12 @@ enum Commands {
         #[arg(short, long, default_value_t = 30)]
         days: usize,
     },
+    /// Process an Antigravity CLI (agy) hook payload
+    AgyHook {
+        /// The JSON payload from agy
+        #[arg(long)]
+        payload: String,
+    },
 }
 
 #[derive(Subcommand, Clone)]
@@ -235,148 +242,164 @@ fn main() {
     }
 
     tracing_subscriber::fmt::init();
-    let cli = Cli::parse();
-    if let Err(err) = run(cli) {
-        eprintln!("Error: {err}");
-        std::process::exit(1);
-    }
+
+    // Set up a basic signal handler for graceful interruption
+    let runtime = match tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+    {
+        Ok(rt) => rt,
+        Err(e) => {
+            eprintln!("Failed to initialize Tokio runtime: {}", e);
+            std::process::exit(1);
+        }
+    };
+
+    runtime.block_on(async {
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() => {
+                eprintln!("\nInterrupted by user. Exiting...");
+                std::process::exit(130);
+            }
+            res = async {
+                let cli = Cli::parse();
+                run(cli).await
+            } => {
+                if let Err(err) = res {
+                    use ai_brains_contracts::response::{ApiError, ApiResult};
+                    let api_error = ApiError::new("COMMAND_FAILED", err.to_string());
+                    let result = ApiResult::<serde_json::Value>::error(api_error);
+                    if let Ok(json) = serde_json::to_string(&result) {
+                        eprintln!("{}", json);
+                    } else {
+                        eprintln!("Error: {err}");
+                    }
+                    std::process::exit(1);
+                }
+            }
+        }
+    });
 }
 
-fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
+async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
+    let ctx = AppContext::from_cli(cli.vault_path.clone(), cli.key.clone())?;
     match &cli.command {
+        Commands::Init => commands::init::run(&ctx),
+        Commands::Ingest => commands::ingest::run(&ctx),
+        Commands::Recall {
+            query,
+            limit,
+            project_id,
+            session_id,
+            format,
+        } => commands::recall::run(
+            &ctx,
+            query.clone(),
+            *limit,
+            *project_id,
+            *session_id,
+            format.clone(),
+        ),
+        Commands::Preflight {
+            max_words,
+            project_id,
+            pretty,
+            format,
+            scope,
+        } => commands::preflight::run(
+            &ctx,
+            *max_words,
+            *project_id,
+            *pretty,
+            format.clone(),
+            scope.clone(),
+        ),
+        Commands::Nightly {
+            schedule,
+            unschedule,
+            start_time,
+        } => commands::nightly::run(&ctx, *schedule, *unschedule, start_time.clone()),
+        Commands::Backup { command } => match command {
+            Some(BackupCommands::Restore { path }) => {
+                commands::backup::run_restore(&ctx, path.clone())
+            }
+            Some(BackupCommands::Create { output_dir }) => {
+                commands::backup::run_create(&ctx, output_dir.clone())
+            }
+            None => commands::backup::run_create(&ctx, None),
+        },
+        Commands::Forget {
+            memory_id,
+            match_query,
+            force,
+            list_forgotten,
+            restore,
+        } => commands::forget::run(
+            &ctx,
+            memory_id.clone(),
+            match_query.clone(),
+            *force,
+            *list_forgotten,
+            restore.clone(),
+        ),
+        Commands::StopSession { session_id } => {
+            commands::stop_session::run(&ctx, session_id.clone())
+        }
         Commands::Context {
             new_project,
             new_session,
             show,
             tx_id,
+        } => commands::context::run(&ctx, *new_project, *new_session, *show, tx_id.clone()),
+        Commands::Pin {
+            content,
+            role,
+            privacy,
+            stdin,
+            tags,
+            tx_id,
         } => {
-            commands::context::run(*new_project, *new_session, *show, tx_id.clone())?;
-            if !*show {
-                dotenvy::dotenv_override().ok();
-                let ctx = AppContext::from_cli(cli.vault_path.clone(), cli.key.clone())?;
-                if let Err(e) = commands::sync::run_pull(&ctx, None, true, true) {
-                    eprintln!("Warning: Auto-triggering sync pull failed: {}", e);
-                }
-            }
-            Ok(())
-        }
-        _ => {
-            let ctx = AppContext::from_cli(cli.vault_path.clone(), cli.key.clone())?;
-            match &cli.command {
-                Commands::Init => commands::init::run(&ctx),
-                Commands::Ingest => commands::ingest::run(&ctx),
-                Commands::Recall {
-                    query,
-                    limit,
-                    project_id,
-                    session_id,
-                    format,
-                } => commands::recall::run(
+            if *stdin {
+                commands::pin::run_stdin(
                     &ctx,
-                    query.clone(),
-                    *limit,
-                    *project_id,
-                    *session_id,
-                    format.clone(),
-                ),
-                Commands::Preflight {
-                    max_words,
-                    project_id,
-                    pretty,
-                    format,
-                    scope,
-                } => commands::preflight::run(
+                    role.clone(),
+                    privacy.clone(),
+                    tags.clone(),
+                    tx_id.clone(),
+                )
+            } else if let Some(c) = content {
+                commands::pin::run(
                     &ctx,
-                    *max_words,
-                    *project_id,
-                    *pretty,
-                    format.clone(),
-                    scope.clone(),
-                ),
-                Commands::Nightly {
-                    schedule,
-                    unschedule,
-                    start_time,
-                } => commands::nightly::run(&ctx, *schedule, *unschedule, start_time.clone()),
-                Commands::Backup { command } => match command {
-                    Some(BackupCommands::Restore { path }) => {
-                        commands::backup::run_restore(&ctx, path.clone())
-                    }
-                    Some(BackupCommands::Create { output_dir }) => {
-                        commands::backup::run_create(&ctx, output_dir.clone())
-                    }
-                    None => commands::backup::run_create(&ctx, None),
-                },
-                Commands::Forget {
-                    memory_id,
-                    match_query,
-                    force,
-                    list_forgotten,
-                    restore,
-                } => commands::forget::run(
-                    &ctx,
-                    memory_id.clone(),
-                    match_query.clone(),
-                    *force,
-                    *list_forgotten,
-                    restore.clone(),
-                ),
-                Commands::StopSession { session_id } => {
-                    commands::stop_session::run(&ctx, session_id.clone())
-                }
-                Commands::Pin {
-                    content,
-                    role,
-                    privacy,
-                    stdin,
-                    tags,
-                    tx_id,
-                } => {
-                    if *stdin {
-                        commands::pin::run_stdin(
-                            &ctx,
-                            role.clone(),
-                            privacy.clone(),
-                            tags.clone(),
-                            tx_id.clone(),
-                        )
-                    } else if let Some(c) = content {
-                        commands::pin::run(
-                            &ctx,
-                            c.clone(),
-                            role.clone(),
-                            privacy.clone(),
-                            tags.clone(),
-                            tx_id.clone(),
-                        )
-                    } else {
-                        Err("Either provide content as a positional argument or use --stdin to read from stdin.".into())
-                    }
-                }
-                Commands::Safety { command } => match command {
-                    SafetyCommands::Sync { limit, dry_run } => {
-                        commands::safety::run(&ctx, *limit, *dry_run)
-                    }
-                },
-                Commands::Sync { command } => match command {
-                    SyncCommands::Pull {
-                        from_file,
-                        hotspots,
-                        ledger,
-                    } => commands::sync::run_pull(&ctx, from_file.clone(), *hotspots, *ledger),
-                    SyncCommands::Push {
-                        with_impact,
-                        with_verify,
-                    } => commands::sync::run_push(&ctx, *with_impact, *with_verify),
-                    SyncCommands::Query { query, format } => {
-                        commands::sync::run_query(&ctx, query.clone(), format.clone())
-                    }
-                },
-                Commands::AntigravityImport { days } => {
-                    commands::antigravity_import::run(&ctx, *days)
-                }
-                _ => unreachable!(),
+                    c.clone(),
+                    role.clone(),
+                    privacy.clone(),
+                    tags.clone(),
+                    tx_id.clone(),
+                )
+            } else {
+                Err("Either provide content as a positional argument or use --stdin to read from stdin.".into())
             }
         }
+        Commands::Safety { command } => match command {
+            SafetyCommands::Sync { limit, dry_run } => {
+                commands::safety::run(&ctx, *limit, *dry_run)
+            }
+        },
+        Commands::Sync { command } => match command {
+            SyncCommands::Pull {
+                from_file,
+                hotspots,
+                ledger,
+            } => commands::sync::run_pull(&ctx, from_file.clone(), *hotspots, *ledger),
+            SyncCommands::Push {
+                with_impact,
+                with_verify,
+            } => commands::sync::run_push(&ctx, *with_impact, *with_verify),
+            SyncCommands::Query { query, format } => {
+                commands::sync::run_query(&ctx, query.clone(), format.clone()).await
+            }
+        },
+        Commands::AntigravityImport { days } => commands::antigravity_import::run(&ctx, *days),
+        Commands::AgyHook { payload } => commands::agy_hook::run(&ctx, payload),
     }
 }

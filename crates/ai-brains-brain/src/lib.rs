@@ -249,6 +249,13 @@ impl NightlyService {
         let mut final_json: Option<String> = None;
 
         for (i, chunk_turns) in chunks.iter().enumerate() {
+            eprintln!(
+                "  [Session {}] Processing chunk {}/{} (budget: {} tokens)...",
+                session_id_str,
+                i + 1,
+                chunks.len(),
+                budget
+            );
             tracing::info!(
                 "Processing chunk {}/{} for session {}...",
                 i + 1,

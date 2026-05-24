@@ -34,9 +34,9 @@ impl Projection for ProjectProjection {
             }
             Payload::ProjectAliasAdded(p) => {
                 tx.execute(
-                    "INSERT INTO project_alias_projection (alias, project_id)
-                     VALUES (?, ?)
-                     ON CONFLICT(alias) DO UPDATE SET project_id = excluded.project_id",
+                    "INSERT INTO project_alias_projection (alias, project_id) \
+                     VALUES (?, ?) \
+                     ON CONFLICT(alias) DO NOTHING",
                     rusqlite::params![p.alias, p.project_id.to_string()],
                 )?;
             }

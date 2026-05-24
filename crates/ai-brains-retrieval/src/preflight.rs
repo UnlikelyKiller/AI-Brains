@@ -29,9 +29,11 @@ pub fn build_preflight(
     let mut sections = Vec::new();
 
     // --- ChangeGuard Blended Section (New) ---
+    let mut has_cg_intelligence = false;
     if let Some(ref pid) = project_id_str {
         if let Some(cg_context) = query_changeguard(pid, scope_paths.as_ref()) {
             sections.push(cg_context);
+            has_cg_intelligence = true;
         }
     }
 
@@ -61,6 +63,12 @@ pub fn build_preflight(
         let memory_id: String = row.get(0)?;
         let content: String = row.get(1)?;
         let updated_at: String = row.get(2)?;
+
+        // Suppress vault HOTSPOTs if we already have fresh intelligence from the bridge
+        if has_cg_intelligence && content.contains("HOTSPOT:") {
+            continue;
+        }
+
         safety_ids.insert(memory_id);
         safety_entries.push((strip_ansi(&content), updated_at));
     }
