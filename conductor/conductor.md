@@ -58,6 +58,9 @@
 | T49 | Differential agy Ingestion | **Pending** | Orchestrator | [T49](./tracks/trackT49/spec.md) | Delta sync for agy conversations to skip existing turns. |
 | T50 | CozoDB Bridge Hardening & Unification | Pending | Orchestrator | [T50](./tracks/trackT50/spec.md) | Batch ingestion, unified projection, fast-fail bridge handshake, and Datalog escaping. |
 | T51 | Daemon Auto-Launch & Bridge Silence | **Completed** | Orchestrator | [T51](./tracks/trackT51/spec.md) | Auto-start daemon on demand and suppress bridge noise. |
+| T52 | Nightly Resilience & Async Alignment | Pending | Orchestrator | [T52](./tracks/trackT52/spec.md) | Fix nightly runtime panic and ensure auto-start for background tasks. |
+| T53 | Daemon Lifecycle & Global Install UX | Pending | Orchestrator | [T53](./tracks/trackT53/spec.md) | Implement graceful stop and solve binary locking during upgrades. |
+| T54 | Bridge Stderr Hardening | Pending | Orchestrator | [T54](./tracks/trackT54/spec.md) | Suppress transient ChangeGuard stderr in quiet mode. |
 
 ## Completed Phase: Phase 19 - Refinement and Expansion
 - **Track T51**: Implemented daemon auto-launch and bridge silence mechanism. `ai-brains sync query` now auto-starts `ai-brainsd` if unreachable, supports a `--quiet` flag, preserves vault settings (path/key) in spawned processes, and mitigates startup race conditions. Codex review findings addressed.
