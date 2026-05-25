@@ -1,4 +1,3 @@
-use rand::{rngs::OsRng, RngCore};
 use std::fmt;
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
@@ -10,10 +9,10 @@ pub struct DataKey {
 }
 
 impl DataKey {
-    /// Generate a new random DataKey using OsRng
+    /// Generate a new random DataKey
     pub fn generate() -> Self {
         let mut material = [0u8; KEY_LEN];
-        OsRng.fill_bytes(&mut material);
+        rand::fill(&mut material);
         Self { material }
     }
 

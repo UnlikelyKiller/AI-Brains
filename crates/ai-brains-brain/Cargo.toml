@@ -21,9 +21,9 @@ async-trait = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
 rusqlite = { workspace = true }
-tempfile = "3.10"
+tempfile.workspace = true
 
 [dev-dependencies]
 ai-brains-crypto = { path = "../ai-brains-crypto" }
-tempfile = "3.10"
+tempfile.workspace = true
 tracing-subscriber = { workspace = true }

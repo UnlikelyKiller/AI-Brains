@@ -34,9 +34,9 @@ pub fn wrap_key(key_material: &[u8]) -> Result<Vec<u8>> {
         unsafe { std::slice::from_raw_parts(output.pbData, output.cbData as usize).to_vec() };
 
     unsafe {
-        windows::Win32::Foundation::LocalFree(windows::Win32::Foundation::HLOCAL(
+        windows::Win32::Foundation::LocalFree(Some(windows::Win32::Foundation::HLOCAL(
             output.pbData as *mut core::ffi::c_void,
-        ));
+        )));
     }
 
     Ok(result)
@@ -68,9 +68,9 @@ pub fn unwrap_key(wrapped_material: &[u8]) -> Result<Vec<u8>> {
         unsafe { std::slice::from_raw_parts(output.pbData, output.cbData as usize).to_vec() };
 
     unsafe {
-        windows::Win32::Foundation::LocalFree(windows::Win32::Foundation::HLOCAL(
+        windows::Win32::Foundation::LocalFree(Some(windows::Win32::Foundation::HLOCAL(
             output.pbData as *mut core::ffi::c_void,
-        ));
+        )));
     }
 
     Ok(result)

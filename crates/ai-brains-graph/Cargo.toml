@@ -18,7 +18,7 @@ uuid = { workspace = true }
 chrono = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
-tempfile = "3.10"
+tempfile.workspace = true
 
 [dev-dependencies]
 ai-brains-crypto = { path = "../ai-brains-crypto" }

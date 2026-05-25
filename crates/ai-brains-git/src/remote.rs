@@ -14,5 +14,5 @@ pub fn read_remote_url_hash(root: &Path) -> Result<Option<String>> {
 pub fn hash_remote_url(url: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(url.as_bytes());
-    format!("{:x}", hasher.finalize())
+    hex::encode(hasher.finalize())
 }

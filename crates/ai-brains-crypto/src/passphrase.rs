@@ -4,7 +4,7 @@ use aes_gcm::{
     Aes256Gcm, Nonce,
 };
 use argon2::Argon2;
-use rand::{rngs::OsRng, RngCore};
+use rand::rngs::SysRng;
 
 pub const SALT_LEN: usize = 16;
 pub const NONCE_LEN: usize = 12;
@@ -20,14 +20,19 @@ pub fn wrap_key(
     key_material: &[u8],
     passphrase: &[u8],
 ) -> Result<(Vec<u8>, [u8; SALT_LEN], [u8; NONCE_LEN])> {
+    use rand::TryRng;
     let mut salt = [0u8; SALT_LEN];
-    OsRng.fill_bytes(&mut salt);
+    SysRng
+        .try_fill_bytes(&mut salt)
+        .map_err(|e| CryptoError::EncryptionError(format!("Entropy failed: {}", e)))?;
 
     let mut derived_key = [0u8; 32];
     derive_key(passphrase, &salt, &mut derived_key)?;
 
     let mut nonce_bytes = [0u8; NONCE_LEN];
-    OsRng.fill_bytes(&mut nonce_bytes);
+    SysRng
+        .try_fill_bytes(&mut nonce_bytes)
+        .map_err(|e| CryptoError::EncryptionError(format!("Entropy failed: {}", e)))?;
     let nonce = Nonce::from_slice(&nonce_bytes);
 
     let cipher = Aes256Gcm::new_from_slice(&derived_key)

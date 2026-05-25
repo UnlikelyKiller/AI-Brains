@@ -282,7 +282,7 @@ async fn process_sync(
     });
     let mut hasher = Sha256::new();
     hasher.update(json_for_hash.as_bytes());
-    let hash_hex = format!("{:x}", hasher.finalize());
+    let hash_hex = hex::encode(hasher.finalize());
 
     store
         .set_sync_state("last_inbound_hash", &hash_hex)

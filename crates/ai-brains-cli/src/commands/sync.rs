@@ -122,7 +122,7 @@ pub fn run_pull(
         let json_for_hash = serde_json::to_string(&record).unwrap_or_default();
         let mut hasher2 = Sha256::new();
         hasher2.update(json_for_hash.as_bytes());
-        let hash_hex = format!("{:x}", hasher2.finalize());
+        let hash_hex = hex::encode(hasher2.finalize());
         last_hash = Some(hash_hex.clone());
         sink.store.set_sync_state("last_inbound_hash", &hash_hex)?;
 
@@ -302,7 +302,7 @@ pub fn run_push(
         let json_for_hash = serde_json::to_string(&record).unwrap_or_default();
         let mut hasher = Sha256::new();
         hasher.update(json_for_hash.as_bytes());
-        let hash_hex = format!("{:x}", hasher.finalize());
+        let hash_hex = hex::encode(hasher.finalize());
         last_hash = Some(hash_hex.clone());
 
         out_records.push(record);

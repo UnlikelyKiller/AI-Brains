@@ -11,14 +11,14 @@ ai-brains-core = { path = "../ai-brains-core", version = "0.1.0" }
 ai-brains-events = { path = "../ai-brains-events", version = "0.1.0" }
 ai-brains-crypto = { path = "../ai-brains-crypto", version = "0.1.0" }
 
-rusqlite = { version = "0.32.1", features = ["bundled"] }
-thiserror = "2.0"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-chrono = { version = "0.4", features = ["serde"] }
-time = { version = "0.3", features = ["serde", "parsing", "formatting"] }
-uuid = "1.0"
+rusqlite.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+chrono.workspace = true
+time.workspace = true
+uuid.workspace = true
 
 [dev-dependencies]
-tempfile = "3.10"
+tempfile.workspace = true
 

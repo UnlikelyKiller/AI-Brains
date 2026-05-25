@@ -22,7 +22,7 @@ ai-brains-models = { path = "../ai-brains-models" }
 ai-brains-graph = { path = "../ai-brains-graph", optional = true }
 serde_json.workspace = true
 serde.workspace = true
-clap = { version = "4.4", features = ["derive", "env"] }
+clap.workspace = true
 uuid = { workspace = true, features = ["v4", "v5"] }
 ai-brains-brain = { path = "../ai-brains-brain" }
 ai-brains-scheduler = { path = "../ai-brains-scheduler" }
@@ -33,13 +33,15 @@ ai-brains-path = { path = "../ai-brains-path" }
 tokio = { workspace = true }
 rusqlite = { workspace = true }
 dotenvy = { workspace = true }
-dirs = "6.0"
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+dirs.workspace = true
+tracing.workspace = true
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
 strip-ansi-escapes.workspace = true
 sha2.workspace = true
-chrono = { workspace = true }
-time = "0.3"
+hex.workspace = true
+chrono.workspace = true
+
+time.workspace = true
 
 [features]
 default = []

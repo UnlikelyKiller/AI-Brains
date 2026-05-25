@@ -10,7 +10,7 @@ repository.workspace = true
 serde.workspace = true
 uuid.workspace = true
 thiserror.workspace = true
-time = { version = "0.3", features = ["serde", "formatting", "parsing"] }
+time.workspace = true
 
 [dev-dependencies]
 serde_json.workspace = true

@@ -49,7 +49,7 @@ fn test_cross_repo_sync_pull_and_push() -> Result<(), Box<dyn std::error::Error>
     use sha2::{Digest, Sha256};
     let mut hasher = Sha256::new();
     hasher.update(json_for_hash.as_bytes());
-    let h1 = format!("{:x}", hasher.finalize());
+    let h1 = hex::encode(hasher.finalize());
 
     // Ledger delta record
     let record2 = serde_json::json!({
@@ -390,7 +390,7 @@ fn test_lineage_bootstrapping_with_existing_hash() -> Result<(), Box<dyn std::er
     use sha2::{Digest, Sha256};
     let mut hasher = Sha256::new();
     hasher.update(json_for_hash.as_bytes());
-    let h1 = format!("{:x}", hasher.finalize());
+    let h1 = hex::encode(hasher.finalize());
 
     // Record 2: matches record 1's hash (should be pulled)
     let record2 = serde_json::json!({
