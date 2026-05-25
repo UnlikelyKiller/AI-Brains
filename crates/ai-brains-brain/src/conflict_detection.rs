@@ -40,6 +40,10 @@ impl ConflictDetectionService {
             .collect::<Vec<_>>()
             .join(" OR ");
 
+        if fts_query.is_empty() {
+            return Ok(());
+        }
+
         let related_memories = self.query_store.search_memories(&fts_query, 5)?;
 
         if related_memories.is_empty() {

@@ -18,8 +18,9 @@ This skill requires the `ai-brains` CLI tool.
 2. **Fallback**: If the CLI is not found, inform the user that ai-brains needs to be installed. Proceed with manual context gathering (README, Cargo.toml, entry points) and do not attempt further vault commands.
 
 ## Infrastructure Invariants (May 2026)
+- **Daemon Auto-Launch**: The CLI automatically spawns `ai-brainsd` in the background if it's unreachable. It inherits vault path and key from the environment.
 - **Ultra-Fast Handshake**: The CLI performs an async Ping/Pong handshake with the daemon in **<10ms**.
-- **Fast-Fail**: Daemon-dependent commands (like `sync query`) return `exit 1` immediately if the daemon is unreachable.
+- **Fast-Fail**: Daemon-dependent commands return `exit 1` immediately if the daemon is unreachable and auto-launch fails.
 - **Structured Errors**: All CLI failures emit structured JSON objects (`ApiResult::error`) to stderr.
 
 ## Workflow Phases
@@ -33,15 +34,16 @@ Trigger when starting a new session or entering a new repository.
    - **Goal**: Identify the most recent project state and safety constraints.
    - **Tip**: Use `--pretty` for human-readable text output when debugging.
 - **Heuristic**: Keep any additional manual research notes under ~150 words to ensure the memory index remains dominant in your context.
-- **Missing Bearings**: If a core bearing (README, CI config) is missing, record it as a constraint in Phase 3.
 
 ### Phase 2: Recall (Search before acting)
 Trigger before starting a development track, architectural change, or when an unfamiliar constant/path is encountered.
-Run: `ai-brains recall "<topic>"`
-- **Goal**: Find project-specific constraints or rejected approaches.
-- **Context**: This command traverses FTS5 with BM25 ranking. Results include a `score` field for relevance.
-- **Readable output**: Use `--format pretty` for human-readable results with scores displayed.
-- **Empty results**: If no results, try shorter terms or remove special characters (colons and hyphens are sanitized automatically).
+1. **Unified Search**: Run `ai-brains sync query "<topic>" --quiet`
+   - **Goal**: Search both local vault and ChangeGuard bridge records in one command.
+   - **Tip**: Use `--quiet` to suppress ChangeGuard bridge noise (e.g., file locks).
+2. **Vault Search**: Run `ai-brains recall "<topic>"`
+   - **Goal**: Find project-specific constraints or rejected approaches in the local vault.
+   - **Context**: This command traverses FTS5 with BM25 ranking.
+   - **Readable output**: Use `--format pretty` for human-readable results with scores displayed.
 
 ### Phase 3: Record (Persist after deciding)
 Trigger immediately after a major decision, discovery of a critical constraint, or user correction.
@@ -69,8 +71,8 @@ The system supports the new `agy` CLI via real-time hooks and multi-path discove
 ## Maintenance
 For batch reconciliation across sessions and to update the relational graph, run:
 `ai-brains nightly`
+- **Graceful Management**: Use `ai-brains daemon stop` to shutdown the background process before upgrades. Use `--force` if it hangs.
 - **Scheduling**: Use `--schedule` to register as a Windows scheduled task. Use `--unschedule` to remove it.
-- **Important**: `nightly` is a heavy batch operation that summarizes sessions and rebuilds the relational graph. Do NOT run it as a substitute for other commands. Only use it when the vault feels stale or a significant number of sessions have accumulated.
 
 ## Backup & Restore
 - **Create backup**: `ai-brains backup` (or `ai-brains backup create --output-dir <path>`)
@@ -82,6 +84,7 @@ For batch reconciliation across sessions and to update the relational graph, run
 |---|---|
 | Initialize Context | `ai-brains context` (use `--show` to view, `--new-session` reset) |
 | Sync Safety Signals | `ai-brains safety sync` (use `--dry-run` to preview) |
+| Unified Search | `ai-brains sync query` (searches vault + ChangeGuard) |
 | Get Orientation | `ai-brains preflight` (use `--pretty` for readable text) |
 | Deep Search | `ai-brains recall` (use `--format pretty` for readable results) |
 | Pinned Record | `ai-brains pin` (use `--tag` for categories, `--stdin` piped) |
@@ -89,4 +92,7 @@ For batch reconciliation across sessions and to update the relational graph, run
 | agy Capture Hook | `ai-brains agy-hook --payload "{...}"` (used by agy CLI hooks) |
 | Import Antigravity | `ai-brains antigravity-import --days 30` (scans multi-path brain/tmp) |
 | Nightly Sweep | `ai-brains nightly` (summarization + graph rebuild) |
+| Sync Pull/Push | `ai-brains sync pull`, `ai-brains sync push` (interchange with bridge) |
+| Stop Daemon | `ai-brains daemon stop` (use `--force` to kill process) |
 | Backup Vault | `ai-brains backup` (use `backup restore <path>` to recover) |
+
