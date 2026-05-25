@@ -203,6 +203,9 @@ pub enum SyncCommands {
         /// Output format (pretty, text, ndjson)
         #[arg(long)]
         format: Option<String>,
+        /// Suppress daemon-down error messages
+        #[arg(long, short)]
+        quiet: bool,
     },
 }
 
@@ -395,9 +398,11 @@ async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 with_impact,
                 with_verify,
             } => commands::sync::run_push(&ctx, *with_impact, *with_verify),
-            SyncCommands::Query { query, format } => {
-                commands::sync::run_query(&ctx, query.clone(), format.clone()).await
-            }
+            SyncCommands::Query {
+                query,
+                format,
+                quiet,
+            } => commands::sync::run_query(&ctx, query.clone(), format.clone(), *quiet).await,
         },
         Commands::AntigravityImport { days } => commands::antigravity_import::run(&ctx, *days),
         Commands::AgyHook { payload } => commands::agy_hook::run(&ctx, payload),

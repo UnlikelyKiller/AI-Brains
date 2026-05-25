@@ -29,6 +29,7 @@ impl<'a> GraphProjector<'a> {
         Ok(())
     }
 
+    #[allow(clippy::disallowed_methods)]
     pub fn apply(&mut self, envelope: &Envelope) -> Result<()> {
         match &envelope.payload {
             Payload::ProjectRegistered(p) => {

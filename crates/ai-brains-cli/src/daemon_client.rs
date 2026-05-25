@@ -19,6 +19,81 @@ impl DaemonClient {
         }
     }
 
+    pub fn spawn_daemon(
+        &self,
+        vault_path: &std::path::Path,
+        key: &ai_brains_crypto::SqlCipherKey,
+    ) -> std::io::Result<()> {
+        let exe_path = std::env::current_exe()?;
+        let daemon_name = if cfg!(windows) {
+            "ai-brainsd.exe"
+        } else {
+            "ai-brainsd"
+        };
+        let mut daemon_path = exe_path
+            .parent()
+            .ok_or_else(|| std::io::Error::other("Failed to get executable parent dir"))?
+            .to_path_buf();
+        daemon_path.push(daemon_name);
+
+        // Try next to current exe first
+        let mut cmd = if daemon_path.exists() {
+            std::process::Command::new(daemon_path)
+        } else {
+            // Fallback to searching PATH
+            std::process::Command::new(daemon_name)
+        };
+
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
+            const DETACHED_PROCESS: u32 = 0x00000008;
+            cmd.creation_flags(CREATE_NO_WINDOW | DETACHED_PROCESS);
+        }
+
+        cmd.env("AI_BRAINS_VAULT_PATH", vault_path)
+            .env("AI_BRAINS_KEY", key.expose_secret())
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn()?;
+
+        Ok(())
+    }
+
+    pub async fn ensure_running(
+        &self,
+        vault_path: &std::path::Path,
+        key: &ai_brains_crypto::SqlCipherKey,
+    ) -> bool {
+        // First probe with ultra-fast timeout
+        if self.probe(Duration::from_millis(10)).await {
+            return true;
+        }
+
+        // Potential race: another process might be spawning the daemon right now.
+        // Add a small jittered backoff and re-probe before attempting to spawn.
+        let jitter = (std::process::id() % 50) as u64;
+        tokio::time::sleep(Duration::from_millis(10 + jitter)).await;
+        if self.probe(Duration::from_millis(10)).await {
+            return true;
+        }
+
+        // Still not running, try to spawn
+        if self.spawn_daemon(vault_path, key).is_ok() {
+            // Give it some time to start and probe again
+            for _ in 0..5 {
+                tokio::time::sleep(Duration::from_millis(50)).await;
+                if self.probe(Duration::from_millis(10)).await {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+
     pub async fn probe(&self, timeout: Duration) -> bool {
         #[cfg(windows)]
         {

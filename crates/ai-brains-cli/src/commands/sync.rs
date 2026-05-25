@@ -364,10 +364,14 @@ pub async fn run_query(
     ctx: &AppContext,
     query: String,
     format: Option<String>,
+    quiet: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // Phase 0: Fast-fail if daemon is unreachable (Requirement T44.2)
+    // Phase 0: Ensure daemon is running (Requirement T51.1)
     let client = crate::daemon_client::DaemonClient::new();
-    if !client.probe(std::time::Duration::from_millis(10)).await {
+    if !client.ensure_running(&ctx.vault_path, &ctx._key).await {
+        if quiet {
+            return Ok(());
+        }
         return Err("AI-Brains daemon is not running or unreachable.".into());
     }
 

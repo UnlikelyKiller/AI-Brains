@@ -273,6 +273,7 @@ impl CozoProxyBackend {
     }
 
     /// Translate `add_node` into a CozoDB `:put` Datalog statement.
+    #[allow(dead_code)]
     fn datalog_put_node(
         id: &str,
         label: &str,
@@ -290,6 +291,7 @@ impl CozoProxyBackend {
     }
 
     /// Translate `add_edge` into a CozoDB `:put` Datalog statement.
+    #[allow(dead_code)]
     fn datalog_put_edge(source: &str, target: &str, relation: &str, confidence: f64) -> String {
         format!(
             "?[source, target, relation, confidence] <- [[\"{}\", \"{}\", \"{}\", {}]] :put edge",

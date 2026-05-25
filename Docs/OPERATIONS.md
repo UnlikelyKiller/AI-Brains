@@ -107,6 +107,7 @@ If the graph features are missing on Windows, verify that the `graph` feature wa
 |---|---|
 | `AI_BRAINS_VAULT_PATH` | Default path to the vault database. |
 | `AI_BRAINS_KEY` | Hex-encoded SQLCipher key. |
-| `AI_BRAINS_MODEL_URL` | Endpoint for the local LLM router (default: http://127.0.0.1:8081). |
-| `AI_BRAINS_EMBEDDING_MODEL` | Alias of the embedding model in `models.ini` (e.g., `bge-m3`). |
-| `AI_BRAINS_COMPLETION_MODEL` | Alias of the completion model in `models.ini` (e.g., `qwen3.5-9b`). |
+| `AI_BRAINS_MODEL_URL` | Endpoint for the local LLM completion server (default: http://127.0.0.1:8081). |
+| `AI_BRAINS_EMBEDDING_URL` | Endpoint for the local embedding server (default: http://127.0.0.1:8083). |
+| `AI_BRAINS_EMBEDDING_MODEL` | Name of the embedding model (default: `nomic-embed-text-v1.5`). |
+| `AI_BRAINS_COMPLETION_MODEL` | Name of the completion model (default: `gemma-4-E4B-it-Q6_K.gguf`). |

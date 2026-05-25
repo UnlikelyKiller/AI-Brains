@@ -1,6 +1,6 @@
 mod common;
 
-use ai_brains_graph::{GraphProjector, GraphVault};
+use ai_brains_graph::GraphProjector;
 use ai_brains_store::EventStore;
 
 #[test]
@@ -9,14 +9,15 @@ fn test_projector_creates_nodes_and_edges() -> Result<(), Box<dyn std::error::Er
     let (session_id, project_id) = common::append_session(&store)?;
 
     // In Track T29, the graph and store share the same connection
-    let conn = store.connection().clone();
-    let vault = GraphVault::new(conn.clone());
-    let projector = GraphProjector::new(&vault);
+    let conn = std::sync::Arc::new(store.connection().clone());
+    let backend = Box::new(ai_brains_graph::SqliteGraphBackend::new(conn.clone()));
+    let mut projector = GraphProjector::new(backend);
 
     // Replay events through projector
     for event in store.read_all_events()? {
         projector.apply(&event)?;
     }
+    projector.flush()?;
 
     // Verify nodes and edges via SQL
     let conn_lock = conn.lock().map_err(|e| e.to_string())?;

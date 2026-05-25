@@ -56,9 +56,11 @@
 | T47 | Safety Sync Hardening & Skill Alignment | **Completed** | Orchestrator | [T47](./tracks/trackT47/spec.md) | Fix floating-point parsing in safety sync and update skill instructions. |
 | T48 | Automated Project Mapping | **Pending** | Orchestrator | [T48](./tracks/trackT48/spec.md) | Map Antigravity projectHash to project_id for auto-discovery. |
 | T49 | Differential agy Ingestion | **Pending** | Orchestrator | [T49](./tracks/trackT49/spec.md) | Delta sync for agy conversations to skip existing turns. |
-| T50 | CozoDB Bridge Hardening & Unification | **Pending** | Orchestrator | [T50](./tracks/trackT50/spec.md) | Batch ingestion, unified projection, fast-fail bridge handshake, and Datalog escaping. |
+| T50 | CozoDB Bridge Hardening & Unification | Pending | Orchestrator | [T50](./tracks/trackT50/spec.md) | Batch ingestion, unified projection, fast-fail bridge handshake, and Datalog escaping. |
+| T51 | Daemon Auto-Launch & Bridge Silence | **Completed** | Orchestrator | [T51](./tracks/trackT51/spec.md) | Auto-start daemon on demand and suppress bridge noise. |
 
 ## Completed Phase: Phase 19 - Refinement and Expansion
+- **Track T51**: Implemented daemon auto-launch and bridge silence mechanism. `ai-brains sync query` now auto-starts `ai-brainsd` if unreachable, supports a `--quiet` flag, preserves vault settings (path/key) in spawned processes, and mitigates startup race conditions. Codex review findings addressed.
 - [x] **Track T44** - System Hardening & Fast-Fail: Ultra-fast handshake (<10ms), CLI fast-fail, structured JSON errors, and signal handlers.
 - [x] **Track T45** - Antigravity CLI (agy) Integration: `agy` hooks configuration and JSONL transcript capture adapter with privacy filtering.
 - [x] **Track T46** - Multi-Path Antigravity Discovery: Expanded discovery to scan tool-specific brain dirs and project-specific tmp folders, supporting new JSONL formats.
