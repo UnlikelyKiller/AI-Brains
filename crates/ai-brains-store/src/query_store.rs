@@ -2,7 +2,7 @@ use crate::connection::VaultConnection;
 use crate::errors::Result;
 use crate::QueryStore;
 use ai_brains_core::ids::{MemoryId, ProjectId, SessionId};
-use rusqlite::OptionalExtension;
+use rusqlite::{params, OptionalExtension};
 use std::str::FromStr;
 
 impl QueryStore for VaultConnection {
@@ -169,6 +169,13 @@ impl QueryStore for VaultConnection {
             )
             .optional()?
             .flatten();
+        Ok(res)
+    }
+
+    fn get_sync_state(&self, key: &str) -> Result<Option<String>> {
+        let conn = self.lock()?;
+        let mut stmt = conn.prepare("SELECT value FROM sync_state WHERE key = ?")?;
+        let res: Option<String> = stmt.query_row(params![key], |row| row.get(0)).optional()?;
         Ok(res)
     }
 }

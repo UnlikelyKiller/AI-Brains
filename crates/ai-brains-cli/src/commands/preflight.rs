@@ -2,14 +2,16 @@ use crate::context::AppContext;
 use ai_brains_contracts::preflight::PreflightContextResponse;
 use ai_brains_core::ids::ProjectId;
 use ai_brains_retrieval::build_preflight;
+use is_terminal::IsTerminal;
 
 pub fn run(
     ctx: &AppContext,
     max_words: usize,
     project_id: Option<ProjectId>,
     pretty: bool,
-    format: String,
+    format: Option<String>,
     scope: Vec<String>,
+    summary: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Attempt to open graph vault next to the main vault
     #[cfg(feature = "graph")]
@@ -35,7 +37,25 @@ pub fn run(
         scope_paths,
     )?;
 
-    let human_mode = pretty || format.eq_ignore_ascii_case("human");
+    if summary {
+        print_summary(ctx, project_id, &context.text);
+        return Ok(());
+    }
+
+    // Smart defaulting: If stdout is a TTY and no format is specified, use human mode.
+    let is_tty = std::io::stdout().is_terminal();
+    let format_str = format.unwrap_or_else(|| {
+        if is_tty {
+            "human".to_string()
+        } else {
+            "json".to_string()
+        }
+    });
+
+    let human_mode = pretty
+        || format_str.eq_ignore_ascii_case("human")
+        || format_str.eq_ignore_ascii_case("pretty");
+
     if human_mode {
         println!("{}", context.text);
     } else {
@@ -46,6 +66,28 @@ pub fn run(
         println!("{}", serde_json::to_string(&response)?);
     }
     Ok(())
+}
+
+fn print_summary(_ctx: &AppContext, project_id: Option<ProjectId>, text: &str) {
+    let project_name = project_id
+        .map(|id| id.to_string())
+        .unwrap_or_else(|| "global".to_string());
+
+    println!("--- AI-Brains Preflight Summary ---");
+    println!("Project: {}", project_name);
+
+    // Heuristic counts based on markers in context text
+    let hotspot_count = text.matches("HOTSPOT:").count();
+    let decision_count = text.matches("DECISION:").count();
+    let constraint_count = text.matches("CONSTRAINT:").count();
+    let session_count = text.matches("Session ID:").count();
+
+    println!("Hotspots: {}", hotspot_count);
+    println!("Decisions: {}", decision_count);
+    println!("Constraints: {}", constraint_count);
+    println!("Active Sessions: {}", session_count);
+    println!("Total Word Count: {}", text.split_whitespace().count());
+    println!("\nUse --pretty or --format json for full context.");
 }
 
 /// Normalize scope paths for Windows: resolve drive case, UNC prefixes, separator consistency.

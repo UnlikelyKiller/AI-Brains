@@ -53,6 +53,7 @@ pub struct CaptureOutcome {
 
 pub trait CaptureSink {
     fn append(&mut self, envelope: Envelope);
+    fn set_sync_state(&mut self, _key: &str, _value: &str) {}
 }
 
 #[derive(Debug, Default)]

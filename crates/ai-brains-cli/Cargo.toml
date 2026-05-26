@@ -33,6 +33,7 @@ ai-brains-path = { path = "../ai-brains-path" }
 tokio = { workspace = true }
 rusqlite = { workspace = true }
 dotenvy = { workspace = true }
+is-terminal = { workspace = true }
 dirs.workspace = true
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter"] }

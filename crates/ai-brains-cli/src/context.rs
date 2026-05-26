@@ -154,4 +154,10 @@ impl ai_brains_capture::CaptureSink for StoreSink {
             self.last_error = Some(err.to_string());
         }
     }
+
+    fn set_sync_state(&mut self, key: &str, value: &str) {
+        if let Err(err) = self.store.set_sync_state(key, value) {
+            self.last_error = Some(err.to_string());
+        }
+    }
 }

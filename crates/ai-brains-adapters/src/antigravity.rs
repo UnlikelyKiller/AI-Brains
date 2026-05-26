@@ -447,6 +447,25 @@ pub fn import_antigravity_sessions<S: CaptureSink>(
     let mut sessions_imported = 0;
 
     for (idx, source) in recent_sources.iter().enumerate() {
+        // Lightweight metadata check to avoid heavy parsing of unchanged files
+        let metadata = std::fs::metadata(&source.path).ok();
+        let mtime = metadata
+            .as_ref()
+            .and_then(|m| m.modified().ok())
+            .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let size = metadata.as_ref().map(|m| m.len()).unwrap_or(0);
+
+        let meta_key = format!("source_meta:{}", source.session_id);
+        let stored_meta = query_store.get_sync_state(&meta_key).unwrap_or(None);
+        let current_meta = format!("{}:{}", mtime, size);
+
+        if stored_meta.as_ref() == Some(&current_meta) {
+            // Already fully ingested and hasn't changed since.
+            continue;
+        }
+
         if (idx + 1) % 10 == 0 || idx == 0 || idx == source_count - 1 {
             eprintln!(
                 "[Antigravity] Scanning session {}/{}...",
@@ -455,16 +474,14 @@ pub fn import_antigravity_sessions<S: CaptureSink>(
             );
         }
 
-        // Quiescence check: Skip if modified in the last 5 minutes
-        if let Ok(metadata) = std::fs::metadata(&source.path) {
-            if let Ok(modified) = metadata.modified() {
-                if SystemTime::now()
-                    .duration_since(modified)
-                    .unwrap_or(Duration::ZERO)
-                    < Duration::from_secs(300)
-                {
-                    continue;
-                }
+        // Quiescence check: Skip if modified in the last 5 minutes (still active)
+        if let Some(modified) = metadata.as_ref().and_then(|m| m.modified().ok()) {
+            if SystemTime::now()
+                .duration_since(modified)
+                .unwrap_or(Duration::ZERO)
+                < Duration::from_secs(300)
+            {
+                continue;
             }
         }
 
@@ -481,6 +498,8 @@ pub fn import_antigravity_sessions<S: CaptureSink>(
         };
 
         if turns.is_empty() {
+            // Update metadata anyway so we don't keep re-parsing empty/tool-only sessions
+            update_source_meta(sink, &meta_key, &current_meta);
             continue;
         }
 
@@ -489,6 +508,9 @@ pub fn import_antigravity_sessions<S: CaptureSink>(
         let next_index = max_turn.map(|m| m + 1).unwrap_or(0);
 
         if turns.len() <= next_index as usize {
+            // No new turns, but file might have changed (e.g. metadata or tool logs).
+            // Update stored metadata to reflect current state so we skip next time.
+            update_source_meta(sink, &meta_key, &current_meta);
             continue;
         }
 
@@ -554,10 +576,19 @@ pub fn import_antigravity_sessions<S: CaptureSink>(
             sink,
         )?;
 
+        // Successfully imported all current turns. Store metadata.
+        update_source_meta(sink, &meta_key, &current_meta);
         sessions_imported += 1;
     }
 
     Ok((total_turns, sessions_imported))
+}
+
+fn update_source_meta<S: CaptureSink>(sink: &mut S, key: &str, value: &str) {
+    // We try to downcast the sink to something that can handle sync state.
+    // In our CLI implementation, this is StoreSink which has access to SqliteEventStore.
+    // If the sink doesn't support it, we just skip it (performance degrades to legacy behavior).
+    sink.set_sync_state(key, value);
 }
 
 #[cfg(test)]

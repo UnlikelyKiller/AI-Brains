@@ -1,6 +1,7 @@
 use crate::connection::VaultConnection;
 use crate::errors::{Result, StoreError};
 use crate::projections;
+use crate::SyncStateStore;
 use ai_brains_events::Envelope;
 use rusqlite::params;
 use uuid::Uuid;
@@ -28,6 +29,18 @@ impl SqliteEventStore {
 
     pub fn connection(&self) -> &VaultConnection {
         &self.conn
+    }
+}
+
+impl SyncStateStore for SqliteEventStore {
+    fn set_sync_state(&self, key: &str, value: &str) -> Result<()> {
+        let conn = self.conn.lock()?;
+        conn.execute(
+            "INSERT INTO sync_state (key, value) VALUES (?, ?)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![key, value],
+        )?;
+        Ok(())
     }
 }
 

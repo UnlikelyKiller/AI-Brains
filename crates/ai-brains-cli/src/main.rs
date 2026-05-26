@@ -52,12 +52,15 @@ enum Commands {
         /// Output human-readable text instead of JSON
         #[arg(long)]
         pretty: bool,
-        /// Output format: 'json' (default) or 'human'
-        #[arg(long, default_value = "json")]
-        format: String,
+        /// Output format: 'json' or 'human'
+        #[arg(long)]
+        format: Option<String>,
         /// Comma-separated target file/directory paths for contextual risk analysis
         #[arg(long, env = "AI_BRAINS_SCOPE", value_delimiter = ',')]
         scope: Vec<String>,
+        /// Output a concise statistical summary instead of full text
+        #[arg(short, long)]
+        summary: bool,
     },
     /// Run nightly intelligence sweep
     Nightly {
@@ -330,6 +333,7 @@ async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             pretty,
             format,
             scope,
+            summary,
         } => commands::preflight::run(
             &ctx,
             *max_words,
@@ -337,6 +341,7 @@ async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             *pretty,
             format.clone(),
             scope.clone(),
+            *summary,
         ),
         Commands::Nightly {
             schedule,

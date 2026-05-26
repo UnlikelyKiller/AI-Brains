@@ -61,8 +61,8 @@
 | T52 | Nightly Resilience & Async Alignment | **Completed** | Orchestrator | [T52](./tracks/trackT52/spec.md) | Fix nightly runtime panic and ensure auto-start for background tasks. |
 | T53 | Daemon Lifecycle & Global Install UX | **Completed** | Orchestrator | [T53](./tracks/trackT53/spec.md) | Implement graceful stop and solve binary locking during upgrades. |
 | T54 | Bridge Stderr Hardening | **Completed** | Orchestrator | [T54](./tracks/trackT54/spec.md) | Suppress transient ChangeGuard stderr in quiet mode. |
-| T55 | Nightly Performance (Incremental Scan) | Pending | Orchestrator | [T55](./tracks/trackT55/spec.md) | Skip parsing unchanged Antigravity sessions to speed up nightly. |
-| T56 | CLI Output Polish (Smart Preflight) | Pending | Orchestrator | [T56](./tracks/trackT56/spec.md) | Default to human-readable output and add summary mode to preflight. |
+| T55 | Nightly Performance (Incremental Scan) | **Completed** | Orchestrator | [T55](./tracks/trackT55/spec.md) | Skip parsing unchanged Antigravity sessions to speed up nightly. |
+| T56 | CLI Output Polish (Smart Preflight) | **Completed** | Orchestrator | [T56](./tracks/trackT56/spec.md) | Default to human-readable output and add summary mode to preflight. |
 
 ## Completed Phase: Phase 19 - Refinement and Expansion
 - **Track T51**: Implemented daemon auto-launch and bridge silence mechanism. `ai-brains sync query` now auto-starts `ai-brainsd` if unreachable, supports a `--quiet` flag, preserves vault settings (path/key) in spawned processes, and mitigates startup race conditions. Codex review findings addressed.
