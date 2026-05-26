@@ -30,9 +30,9 @@ Trigger when starting a new session or entering a new repository.
 1. **Sync Safety**: Run `ai-brains safety sync`.
    - **Goal**: Ingest recent ChangeGuard hotspots to identify brittle files.
    - **Tip**: Use `--dry-run` to preview what would be synced without pinning.
-2. **Get Orientation**: Run `ai-brains preflight --max-words 1000`.
-   - **Goal**: Identify the most recent project state and safety constraints.
-   - **Tip**: Use `--pretty` for human-readable text output when debugging.
+2. **Get Orientation**: Run `ai-brains preflight --summary`.
+   - **Goal**: Identify project state and safety constraints via a concise human-centric summary.
+   - **Tip**: Use `--pretty` for full human-readable text, or `--format json` for agent context.
 - **Heuristic**: Keep any additional manual research notes under ~150 words to ensure the memory index remains dominant in your context.
 
 ### Phase 2: Recall (Search before acting)
@@ -66,11 +66,12 @@ Trigger when a memory is wrong, outdated, or was created for testing.
 ### Antigravity (`agy`) CLI
 The system supports the new `agy` CLI via real-time hooks and multi-path discovery.
 - **agy-hook**: Triggered by `agy` to push turns into the vault. Enforces privacy filtering (user/assistant only).
-- **Expanded Import**: `ai-brains antigravity-import` scans tool-specific brain dirs and project-specific tmp chat folders (`session-*.jsonl`).
+- **Incremental Import**: `ai-brains antigravity-import` scans tool-specific brain dirs and project-specific tmp chat folders (`session-*.jsonl`). It uses file metadata to skip unchanged sessions, ensuring fast performance even with hundreds of files.
 
 ## Maintenance
 For batch reconciliation across sessions and to update the relational graph, run:
 `ai-brains nightly`
+- **Fast Performance**: The nightly sweep uses incremental scanning to process only new or modified Antigravity data.
 - **Graceful Management**: Use `ai-brains daemon stop` to shutdown the background process before upgrades. Use `--force` if it hangs.
 - **Scheduling**: Use `--schedule` to register as a Windows scheduled task. Use `--unschedule` to remove it.
 
@@ -85,14 +86,13 @@ For batch reconciliation across sessions and to update the relational graph, run
 | Initialize Context | `ai-brains context` (use `--show` to view, `--new-session` reset) |
 | Sync Safety Signals | `ai-brains safety sync` (use `--dry-run` to preview) |
 | Unified Search | `ai-brains sync query` (searches vault + ChangeGuard) |
-| Get Orientation | `ai-brains preflight` (use `--pretty` for readable text) |
+| Get Orientation | `ai-brains preflight` (use `--pretty` for full text, `--summary` for stats) |
 | Deep Search | `ai-brains recall` (use `--format pretty` for readable results) |
 | Pinned Record | `ai-brains pin` (use `--tag` for categories, `--stdin` piped) |
 | Forget Memory | `ai-brains forget` (use `--match` for search, `--restore` undo) |
 | agy Capture Hook | `ai-brains agy-hook --payload "{...}"` (used by agy CLI hooks) |
-| Import Antigravity | `ai-brains antigravity-import --days 30` (scans multi-path brain/tmp) |
+| Import Antigravity | `ai-brains antigravity-import --days 30` (incremental scan) |
 | Nightly Sweep | `ai-brains nightly` (summarization + graph rebuild) |
 | Sync Pull/Push | `ai-brains sync pull`, `ai-brains sync push` (interchange with bridge) |
 | Stop Daemon | `ai-brains daemon stop` (use `--force` to kill process) |
 | Backup Vault | `ai-brains backup` (use `backup restore <path>` to recover) |
-
