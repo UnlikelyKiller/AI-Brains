@@ -11,6 +11,24 @@ fn unique_temp_dir(name: &str) -> PathBuf {
     std::env::temp_dir().join(format!("ai-brains-path-{name}-{nanos}"))
 }
 
+#[cfg(windows)]
+fn create_symlink_dir(target: &PathBuf, link: &PathBuf) -> std::io::Result<()> {
+    std::os::windows::fs::symlink_dir(target, link)
+}
+
+#[cfg(unix)]
+fn create_symlink_dir(target: &PathBuf, link: &PathBuf) -> std::io::Result<()> {
+    std::os::unix::fs::symlink(target, link)
+}
+
+#[cfg(not(any(windows, unix)))]
+fn create_symlink_dir(_target: &PathBuf, _link: &PathBuf) -> std::io::Result<()> {
+    Err(std::io::Error::new(
+        std::io::ErrorKind::Unsupported,
+        "symlinks not supported on this platform",
+    ))
+}
+
 #[test]
 fn symlink_resolution_best_effort() -> Result<(), Box<dyn std::error::Error>> {
     let root = unique_temp_dir("root");
@@ -18,7 +36,7 @@ fn symlink_resolution_best_effort() -> Result<(), Box<dyn std::error::Error>> {
     let link = root.join("link");
     fs::create_dir_all(&target)?;
 
-    let link_path = match std::os::windows::fs::symlink_dir(&target, &link) {
+    let link_path = match create_symlink_dir(&target, &link) {
         Ok(_) => link,
         Err(_) => target.clone(),
     };

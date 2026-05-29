@@ -60,11 +60,24 @@ fn test_cli_ingest_smoke() {
 #[test]
 fn test_cli_context_idempotency() {
     let dir = tempdir().unwrap();
+    let vault_path = dir.path().join("vault.db");
     let env_path = dir.path().join(".env");
+
+    // Init vault first (required for context)
+    let mut init_cmd = Command::cargo_bin("ai-brains").unwrap();
+    init_cmd
+        .current_dir(dir.path())
+        .arg("--vault-path")
+        .arg(&vault_path)
+        .arg("init")
+        .assert()
+        .success();
 
     // First run - initializes context
     let mut cmd1 = Command::cargo_bin("ai-brains").unwrap();
     cmd1.current_dir(dir.path())
+        .arg("--vault-path")
+        .arg(&vault_path)
         .arg("context")
         .assert()
         .success()
@@ -76,6 +89,8 @@ fn test_cli_context_idempotency() {
     // Second run - should be idempotent and succeed without error
     let mut cmd2 = Command::cargo_bin("ai-brains").unwrap();
     cmd2.current_dir(dir.path())
+        .arg("--vault-path")
+        .arg(&vault_path)
         .arg("context")
         .assert()
         .success()
@@ -92,6 +107,8 @@ fn test_cli_context_idempotency() {
     // Third run with --new-session - should replace session and change file contents
     let mut cmd3 = Command::cargo_bin("ai-brains").unwrap();
     cmd3.current_dir(dir.path())
+        .arg("--vault-path")
+        .arg(&vault_path)
         .arg("context")
         .arg("--new-session")
         .assert()
