@@ -38,6 +38,8 @@ pub fn normalize_project_path(input: &str) -> Result<ProjectPath> {
             normalize_unc(&abs_str)
         } else if has_drive_prefix(&abs_str) {
             normalize_drive_path(&abs_str)?
+        } else if abs_str.starts_with('/') {
+            abs_str
         } else {
             return Err(PathError::RelativePath(trimmed.to_string()));
         }
