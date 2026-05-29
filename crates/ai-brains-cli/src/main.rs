@@ -73,6 +73,9 @@ enum Commands {
         /// Start time for the scheduled task (e.g. "03:00")
         #[arg(long, default_value = "03:00")]
         start_time: String,
+        /// Show read-only status of the last nightly run and pending work
+        #[arg(long, conflicts_with = "schedule", conflicts_with = "unschedule")]
+        status: bool,
     },
     /// Create a timestamped backup of the vault
     Backup {
@@ -347,7 +350,10 @@ async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             schedule,
             unschedule,
             start_time,
-        } => commands::nightly::run(&ctx, *schedule, *unschedule, start_time.clone()).await,
+            status,
+        } => {
+            commands::nightly::run(&ctx, *schedule, *unschedule, start_time.clone(), *status).await
+        }
         Commands::Backup { command } => match command {
             Some(BackupCommands::Restore { path }) => {
                 commands::backup::run_restore(&ctx, path.clone())

@@ -174,6 +174,18 @@ impl NightlyService {
             eprintln!("[Nightly] Feedback-loop accuracy check complete.");
         }
 
+        // Persist nightly run metadata for --status queries
+        let now = chrono::Utc::now().to_rfc3339();
+        if let Err(e) = self.event_store.set_sync_state("last_nightly_run", &now) {
+            tracing::warn!("Failed to persist last_nightly_run: {}", e);
+        }
+        if let Err(e) = self
+            .event_store
+            .set_sync_state("last_nightly_count", &count.to_string())
+        {
+            tracing::warn!("Failed to persist last_nightly_count: {}", e);
+        }
+
         Ok(count)
     }
 

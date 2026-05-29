@@ -178,4 +178,8 @@ impl QueryStore for VaultConnection {
         let res: Option<String> = stmt.query_row(params![key], |row| row.get(0)).optional()?;
         Ok(res)
     }
+
+    fn get_last_nightly_run(&self) -> Result<Option<String>> {
+        self.get_sync_state("last_nightly_run")
+    }
 }

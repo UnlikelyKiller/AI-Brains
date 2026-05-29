@@ -35,6 +35,7 @@ pub trait QueryStore: std::marker::Send + std::marker::Sync {
     ) -> Result<Option<ai_brains_core::ids::ProjectId>>;
     fn get_max_turn_index(&self, session_id: &SessionId) -> Result<Option<i32>>;
     fn get_sync_state(&self, key: &str) -> Result<Option<String>>;
+    fn get_last_nightly_run(&self) -> Result<Option<String>>;
 }
 
 pub trait SyncStateStore: std::marker::Send + std::marker::Sync {

@@ -9,8 +9,28 @@ pub async fn run(
     schedule: bool,
     unschedule: bool,
     start_time: String,
+    status: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let task_name = "AI-Brains-Nightly";
+
+    if status {
+        let query_store = ctx.conn.clone() as Arc<dyn ai_brains_store::QueryStore>;
+        let unsummarized = query_store.get_unsummarized_sessions()?;
+        let last_run = query_store.get_last_nightly_run()?;
+        let last_count = query_store
+            .get_sync_state("last_nightly_count")?
+            .unwrap_or_else(|| "0".to_string());
+
+        println!("=== Nightly Status ===");
+        match last_run {
+            Some(ts) => println!("Last nightly run: {}", ts),
+            None => println!("Last nightly run: never"),
+        }
+        println!("Unsummarized sessions remaining: {}", unsummarized.len());
+        println!("Sessions summarized in last run: {}", last_count);
+        println!("======================");
+        return Ok(());
+    }
 
     if unschedule {
         let output = std::process::Command::new("schtasks")
