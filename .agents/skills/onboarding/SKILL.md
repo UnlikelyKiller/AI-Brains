@@ -33,9 +33,9 @@ The project is organized into specialized crates to maintain strict boundaries:
 ## Current State
 
 - **Plan**: `Docs/Implementation-Plan.md` v2 (Track-based execution).
-- **Status**: Tracks T61–T69 complete. T70 (ChangeGuard Symbol Bridge) pending. All core features stable.
-- **Infrastructure**: CI/CD ready, ChangeGuard ledger active, graph feature-gated (`--features graph`).
-- **Active tracks**: See `conductor/conductor.md` for the full registry (T61–T70).
+- **Status**: Tracks T61–T71 all complete. All core features stable.
+- **Infrastructure**: CI/CD ready, ChangeGuard ledger active, graph feature-gated (`--features graph`), full CI gate reproducible on Windows (T71).
+- **Active tracks**: See `conductor/conductor.md` for the full registry (T61–T71).
 - **Deviations**: See `Docs/Deviations.md` for architectural departures (e.g., SQLite fallback, graph decoupling).
 
 ## What the System Can Do — Recall & Graph
@@ -97,13 +97,13 @@ ai-brains graph rebuild
 | Question | Use |
 |----------|-----|
 | "What did we decide about X?" | `ai-brains recall` |
-| "What does function X do?" | `changeguard search` |
-| "Which endpoints exist?" | `changeguard ask "list all HTTP routes"` |
+| "What does function X do / which endpoints exist?" | `ai-brains recall --semantic` (T70: symbols are indexed) |
+| "Live code query (not yet in nightly)" | `changeguard search` / `changeguard ask` |
 | "What calls this function?" | `changeguard ask "what calls <fn>"` |
 | "Find memories related to X" | `ai-brains recall --semantic --graph-boost 0.1` |
 | "What was synthesized from this session?" | `ai-brains graph hierarchy <id>` |
 
-> **Note:** After T70 ships, `ai-brains recall` will also return code symbols ingested from ChangeGuard, making a single recall query sufficient for most questions.
+> **As of T70:** `ai-brains recall` also returns code symbols (functions, routes) ingested from ChangeGuard during nightly — a single recall query is sufficient for most questions about decisions and code structure.
 
 ## Engineering Principles (Non-Negotiable)
 
@@ -133,13 +133,13 @@ cargo fmt --check ; cargo clippy --workspace --all-targets -- -D warnings ; carg
 | `Docs/PRD.md` | Product vision and core requirements |
 | `Docs/Implementation-Plan.md` | Master execution plan (Tracks) |
 | `AGENTS.md` | Unified project rules and mandates |
-| `conductor/conductor.md` | Track registry (T61–T70) |
+| `conductor/conductor.md` | Track registry (T61–T71, all complete) |
 
 ## Quick Start
 
 1. **Activate and read the `changeguard` skill** — it handles impact analysis, symbol search, and provenance.
 2. **Run `changeguard index --auto-index`** to refresh the live code symbol index.
 3. **Run `ai-brains recall "what is this project"` `--semantic`** to surface existing knowledge.
-4. **Read `conductor/conductor.md`** to see the current track state (T61–T70).
+4. **Read `conductor/conductor.md`** to see the current track state (T61–T71, all complete).
 5. **Run `changeguard ledger status`** to check recent architectural provenance.
 6. **Run `ai-brains graph update`** to verify the graph is populated (should show >8,000 nodes).

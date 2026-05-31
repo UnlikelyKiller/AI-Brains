@@ -2,7 +2,7 @@
 title: AI-Brains Project Skill
 description: How to build, develop, and operate the AI-Brains local-first memory vault.
 category: devops
-version: 2.0.0
+version: 2.1.0
 ---
 
 # AI-Brains Project Skill
@@ -14,9 +14,10 @@ AI-Brains is a local-first, event-sourced memory vault with:
 - **FTS5** full-text search over conversation turns and ingested documents
 - **Semantic search** via stored embeddings (nomic-embed-text on port 8083)
 - **Nightly summarization** job for session compaction and hierarchical synthesis
-- **ChangeGuard bridge** for safety signals (HOTSPOT, DECISION, CONSTRAINT) and code symbol queries
+- **ChangeGuard bridge** for safety signals (HOTSPOT, DECISION, CONSTRAINT) and code symbol ingestion into recall (T70)
 - **Live graph projection** layer — graph updated automatically on every event append (T69)
 - **Graph-augmented recall** — top hits are score-boosted by their graph neighbors (T66)
+- **Code symbol recall** — functions and routes from ChangeGuard are ingested during nightly and surface via `ai-brains recall` (T70)
 - **Rust workspace** with ~15 crates under `crates/`
 
 ## Where It Lives
@@ -114,6 +115,29 @@ ai-brains project resolve "Newton"
 ai-brains project detect   # auto-detects from current git repo
 ```
 
+### CI Gate (T71 — fully operational on Windows)
+
+Run the full gate or use the verification script:
+
+```powershell
+# Full gate
+cargo fmt --check ; cargo clippy --workspace --all-targets -- -D warnings ; cargo nextest run --workspace ; cargo deny check ; cargo audit
+
+# Or use the script (checks tool presence + versions, then runs gate)
+.\scripts\dev-check.ps1
+
+# Check tools only, skip running the gate
+.\scripts\dev-check.ps1 --check-only
+```
+
+Required tool versions (see `Docs/ci-tooling.md` for install commands):
+
+| Tool | Min Version |
+|------|-------------|
+| `cargo-nextest` | 0.9.137 |
+| `cargo-deny` | 0.19.4 |
+| `cargo-audit` | 0.22.1 |
+
 ### Testing
 
 ```bash
@@ -130,7 +154,7 @@ All tracks follow the Conductor pattern:
 3. Implement → test → lint (CI gate must pass)
 4. Update registry status to Complete
 
-Current track registry: T61–T70. See `conductor/conductor.md`.
+Current track registry: T61–T71 (all complete). See `conductor/conductor.md`.
 
 ## Key Architecture
 
@@ -167,13 +191,13 @@ The graph is stored in SQLite (`graph_node`, `graph_edge` tables) and optionally
 
 | Goal | Command |
 |------|---------|
-| Find past decisions, session memories | `ai-brains recall --semantic` |
+| Find past decisions, session memories, or code symbols | `ai-brains recall --semantic` |
 | Get project-scoped safety signals before editing | `ai-brains preflight --project-id <id>` |
-| Find a function or endpoint by name | `changeguard search "functionName"` |
+| Find a live function or endpoint by name | `changeguard search "functionName"` |
 | Natural language code queries | `changeguard ask "find all GET handlers"` |
 | Blast radius of a change | `changeguard scan --impact` |
 
-> **After T70 ships:** `ai-brains recall` will also return code symbols (functions, routes) ingested from ChangeGuard during nightly, making a single recall query sufficient for most questions.
+> **As of T70:** `ai-brains recall` also returns code symbols (functions, routes) ingested from ChangeGuard during nightly. A single recall query is sufficient for most questions about past decisions and code structure.
 
 ### Nightly Pipeline (what runs automatically)
 
@@ -184,7 +208,7 @@ The graph is stored in SQLite (`graph_node`, `graph_edge` tables) and optionally
 5. Embedding backfill (50 memories without embeddings)
 6. Stale embedding refresh (10 memories older than 30 days)
 7. MADR ingestion from ChangeGuard ledger
-8. *(T70, pending)* ChangeGuard symbol index refresh + symbol ingestion
+8. ChangeGuard symbol index refresh + symbol ingestion into recall (T70)
 
 ## Windows-Specific Notes
 

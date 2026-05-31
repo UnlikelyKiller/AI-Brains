@@ -12,7 +12,7 @@
 | T68 | Memory Synthesis Events | ✅ **Complete** | Hermes+Codex | [T68](tracks/trackT68-memory-synthesis-events/spec.md) | Emit `MemorySynthesized` events during nightly so graph gets `SYNTHESIZED_FROM` edges |
 | T69 | Live Graph Hook — Incremental Graph Updates | ✅ **Complete** | Claude+Codex | [T69](tracks/trackT69-live-graph-hook/spec.md) | Apply graph projector incrementally on each event append; eliminates need for manual `graph rebuild` after recall/nightly |
 | T70 | ChangeGuard Symbol Bridge — Code-Aware Recall | ✅ **Complete** | Codex | [T70](tracks/trackT70-changeguard-symbol-bridge/spec.md) | Ingest ChangeGuard's code symbols (functions and routes) into AI-Brains during nightly so `recall` returns actual code structure |
-| T71 | CI Tooling Reproducibility | 📋 **Pending** | TBD | [T71](tracks/trackT71-ci-tooling-reproducibility/spec.md) | Make nextest, cargo-deny, and cargo-audit reproducible on Windows so the full CI gate can run locally |
+| T71 | CI Tooling Reproducibility | ✅ **Complete** | Claude | [T71](tracks/trackT71-ci-tooling-reproducibility/spec.md) | All three tools install via cargo install --locked; full gate passes locally; scripts/dev-check.ps1 verifies presence + runs gate |
 
 ---
 
