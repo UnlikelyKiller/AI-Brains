@@ -146,12 +146,19 @@ impl AppContext {
 pub struct StoreSink {
     pub store: ai_brains_store::SqliteEventStore,
     pub last_error: Option<String>,
+    #[cfg(feature = "graph")]
+    pub graph_hook: Option<crate::live_graph::LiveGraphHook>,
 }
 
 impl ai_brains_capture::CaptureSink for StoreSink {
     fn append(&mut self, envelope: ai_brains_events::Envelope) {
         if let Err(err) = self.store.append_event(&envelope) {
             self.last_error = Some(err.to_string());
+            return; // don't apply to graph if store failed
+        }
+        #[cfg(feature = "graph")]
+        if let Some(ref mut hook) = self.graph_hook {
+            hook.apply_and_flush(&envelope);
         }
     }
 

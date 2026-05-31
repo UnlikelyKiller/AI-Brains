@@ -13,6 +13,8 @@ pub fn run(ctx: &AppContext, days: usize) -> Result<(), Box<dyn std::error::Erro
     let mut sink = StoreSink {
         store: event_store,
         last_error: None,
+        #[cfg(feature = "graph")]
+        graph_hook: Some(crate::live_graph::LiveGraphHook::new(std::sync::Arc::clone(&ctx.conn))),
     };
 
     // Inherit project ID from environment if available

@@ -115,7 +115,12 @@ pub async fn run(
         );
     }
 
-    let event_store = Arc::new(ai_brains_store::SqliteEventStore::new((*ctx.conn).clone()));
+    #[cfg(feature = "graph")]
+    let event_store: Arc<dyn ai_brains_store::EventStore + Send + Sync> =
+        Arc::new(crate::live_graph::GraphAwareEventStore::new((*ctx.conn).clone()));
+    #[cfg(not(feature = "graph"))]
+    let event_store: Arc<dyn ai_brains_store::EventStore + Send + Sync> =
+        Arc::new(ai_brains_store::SqliteEventStore::new((*ctx.conn).clone()));
     let query_store = ctx.conn.clone() as Arc<dyn ai_brains_store::QueryStore>;
 
     let model_url = std::env::var("AI_BRAINS_MODEL_URL")
@@ -167,6 +172,8 @@ pub async fn run(
 
     eprintln!("Stats: {} sessions summarized.", count);
     eprintln!("Embedding stats: see stderr output above.");
+    #[cfg(feature = "graph")]
+    eprintln!("[Nightly] Graph updated incrementally — run 'graph rebuild' only if you suspect missing edges.");
 
     // --- MADR Ingestion (Phase 18: T41) ---
     eprintln!("Ingesting structured MADR decisions from ChangeGuard...");
@@ -231,6 +238,9 @@ fn ingest_madr_from_changeguard(
     };
     let reader = BufReader::new(file);
 
+    #[cfg(feature = "graph")]
+    let event_store = crate::live_graph::GraphAwareEventStore::new((*ctx.conn).clone());
+    #[cfg(not(feature = "graph"))]
     let event_store = ai_brains_store::SqliteEventStore::new((*ctx.conn).clone());
     let mut ingested = 0;
 

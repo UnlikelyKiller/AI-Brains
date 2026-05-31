@@ -104,6 +104,8 @@ pub fn run(
     let mut sink = crate::context::StoreSink {
         store: ai_brains_store::SqliteEventStore::new((*ctx.conn).clone()),
         last_error: None,
+        #[cfg(feature = "graph")]
+        graph_hook: Some(crate::live_graph::LiveGraphHook::new(std::sync::Arc::clone(&ctx.conn))),
     };
     let service = ai_brains_capture::CaptureService::new();
     let capture_context = ai_brains_capture::CaptureContext {

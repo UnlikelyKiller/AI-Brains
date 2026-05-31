@@ -42,6 +42,9 @@ pub fn run(
 
     // Emit MemoryPinned events for each recall hit so the graph projector can
     // build session -> memory RECALLS edges.
+    #[cfg(feature = "graph")]
+    let event_store = crate::live_graph::GraphAwareEventStore::new((*ctx.conn).clone());
+    #[cfg(not(feature = "graph"))]
     let event_store = ai_brains_store::SqliteEventStore::new((*ctx.conn).clone());
     for (rank, hit) in hits.iter().enumerate() {
         if let Ok(memory_id) = MemoryId::from_str(&hit.memory_id) {

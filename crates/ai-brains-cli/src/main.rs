@@ -1,6 +1,7 @@
 mod commands;
 mod context;
 mod daemon_client;
+mod live_graph;
 
 use crate::context::AppContext;
 use ai_brains_core::ids::{ProjectId, SessionId};
@@ -208,6 +209,8 @@ pub enum GraphCommands {
     Session {
         session_id: String,
     },
+    /// Show current graph health: node/edge counts
+    Update,
 }
 
 #[derive(Subcommand, Clone)]
@@ -525,6 +528,7 @@ async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             GraphCommands::Session { session_id } => {
                 commands::graph::session(&ctx, session_id)
             }
+            GraphCommands::Update => commands::graph::update(&ctx),
         },
     }
 }

@@ -17,6 +17,9 @@ fn recall_returns_sources() -> Result<(), Box<dyn std::error::Error>> {
         100,
         None,
         None,
+        false,
+        0.0,
+        0,
     )?;
     assert!(!hits.is_empty());
     // Find the one from our local store

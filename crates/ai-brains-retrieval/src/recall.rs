@@ -131,6 +131,7 @@ pub fn recall(
 
     // Graph-based neighbor expansion: for each current hit, fetch 1-hop
     // neighbors and add unseen ones with a boosted score.
+    #[cfg(feature = "graph")]
     if graph_hop_depth >= 1 {
         if let Some(searcher) = graph {
             let mut graph_hits: Vec<RecallHit> = Vec::new();

@@ -10,6 +10,7 @@
 | T66 | Graph-Augmented Recall + Graph Query CLI | ✅ **Code Complete** | Hermes+Claude | [T66](tracks/trackT66-graph-augmented-recall/spec.md) | All 3 phases implemented (recall augmentation, CLI queries, boost config). Pending `MemoryPinned`/`MemorySynthesized` events for full data |
 | T67 | Memory Pinning Events | 🔄 **In Progress** | Hermes | [T67](tracks/trackT67-memory-pinning-events/spec.md) | Emit `MemoryPinned` events on recall so graph gets `RECALLS`/`SOURCE_FOR` edges |
 | T68 | Memory Synthesis Events | 🔄 **In Progress** | Hermes | [T68](tracks/trackT68-memory-synthesis-events/spec.md) | Emit `MemorySynthesized` events during nightly so graph gets `SYNTHESIZED_FROM` edges |
+| T69 | Live Graph Hook — Incremental Graph Updates | 🔄 **In Progress** | Claude (Cowork) | [T69](tracks/trackT69-live-graph-hook/spec.md) | Apply graph projector incrementally on each event append; eliminates need for manual `graph rebuild` after recall/nightly |
 
 ---
 
