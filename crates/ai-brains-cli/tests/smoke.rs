@@ -805,3 +805,53 @@ fn test_forget_unknown_memory_id_errors() {
         "stderr should explain the unknown memory id; got: {stderr}"
     );
 }
+
+/// UX: when a project is registered without an alias, the default name
+/// should be readable in `project list`. The old form was
+/// `Project <full-uuid>` (32 hex chars); the friendly form is
+/// `(no alias) — <short-uuid>` (8-char prefix) plus the full id in the
+/// dedicated column. This test seeds a project via `context`, runs
+/// `project list`, and asserts the new friendly form is present.
+#[test]
+fn test_project_list_friendly_default_name() {
+    let dir = tempdir().unwrap();
+    let vault_path = dir.path().join("vault.db");
+
+    Command::cargo_bin("ai-brains")
+        .unwrap()
+        .arg("--vault-path")
+        .arg(&vault_path)
+        .arg("init")
+        .assert()
+        .success();
+
+    // context creates a ProjectRegistered event with the default name.
+    Command::cargo_bin("ai-brains")
+        .unwrap()
+        .current_dir(dir.path())
+        .arg("--vault-path")
+        .arg(&vault_path)
+        .arg("context")
+        .assert()
+        .success();
+
+    let output = Command::cargo_bin("ai-brains")
+        .unwrap()
+        .arg("--vault-path")
+        .arg(&vault_path)
+        .arg("project")
+        .arg("list")
+        .output()
+        .expect("project list must run");
+
+    assert!(
+        output.status.success(),
+        "project list must exit 0; got: stderr={}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("(no alias)"),
+        "project list should show '(no alias) — <short-uuid>' for unnamed projects; got: {stdout}"
+    );
+}
