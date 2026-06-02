@@ -64,6 +64,11 @@ enum Commands {
         /// Hop depth for graph expansion (reserved; currently only depth=1)
         #[arg(long, default_value_t = 1)]
         graph_hop_depth: usize,
+        /// Suppress non-fatal warnings (e.g., bridge-failed notices when
+        /// the cwd is not a git repository). Useful for non-interactive
+        /// scripts and CI runs.
+        #[arg(long)]
+        quiet: bool,
     },
     /// Generate preflight context for an LLM
     Preflight {
@@ -418,6 +423,7 @@ async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             semantic,
             graph_boost,
             graph_hop_depth,
+            quiet,
         } => commands::recall::run(
             &ctx,
             commands::recall::RecallRunOptions {
@@ -429,6 +435,7 @@ async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 semantic: *semantic,
                 graph_boost: *graph_boost,
                 graph_hop_depth: *graph_hop_depth,
+                quiet: *quiet,
             },
         ),
         Commands::Preflight {

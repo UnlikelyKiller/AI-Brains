@@ -432,6 +432,7 @@ pub async fn run_query(
                 semantic: false,
                 graph_boost: 0.1,
                 graph_hop_depth: 1,
+                ..Default::default()
             },
         )?;
 
@@ -478,6 +479,7 @@ pub async fn run_query(
             semantic: false,
             graph_boost: 0.1,
             graph_hop_depth: 1,
+            quiet,
         },
     )?;
 

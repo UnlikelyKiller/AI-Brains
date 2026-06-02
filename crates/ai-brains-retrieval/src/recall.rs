@@ -12,6 +12,9 @@ pub struct RecallOptions {
     pub semantic: bool,
     pub graph_boost: f64,
     pub graph_hop_depth: usize,
+    /// When true, suppress non-fatal warnings (e.g. bridge-failed notices
+    /// when the cwd is not a git repository).
+    pub quiet: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -123,10 +126,12 @@ pub fn recall(
             }
         }
         Err(e) => {
-            eprintln!(
-                "ChangeGuard bridge query failed, falling back to local FTS5 only: {}",
-                e
-            );
+            if !options.quiet {
+                eprintln!(
+                    "ChangeGuard bridge query failed, falling back to local FTS5 only: {}",
+                    e
+                );
+            }
         }
     }
 
