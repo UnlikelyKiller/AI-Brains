@@ -488,6 +488,66 @@ fn test_backup_restore_force_skips_prompt() {
         .stdout(predicate::str::contains("Vault restored from"));
 }
 
+/// T82: `context --new-project` with an existing `.env` must rotate the
+/// project_id to a fresh UUID. The audit showed that the flag was parsed
+/// but ignored when `.env` already existed.
+#[test]
+fn test_context_new_project_rotates_id() {
+    let dir = tempdir().unwrap();
+    let vault_path = dir.path().join("vault.db");
+
+    Command::cargo_bin("ai-brains")
+        .unwrap()
+        .arg("--vault-path")
+        .arg(&vault_path)
+        .arg("init")
+        .assert()
+        .success();
+
+    // First context run: writes an initial .env.
+    Command::cargo_bin("ai-brains")
+        .unwrap()
+        .current_dir(dir.path())
+        .arg("--vault-path")
+        .arg(&vault_path)
+        .arg("context")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Context initialized"));
+
+    let env1 = std::fs::read_to_string(dir.path().join(".env")).unwrap();
+    let project1 = env1
+        .lines()
+        .find(|l| l.starts_with("AI_BRAINS_PROJECT_ID"))
+        .and_then(|l| l.split('=').nth(1))
+        .map(|s| s.to_string())
+        .expect("first project_id must be in .env");
+
+    // Second run with --new-project must rotate the project_id.
+    Command::cargo_bin("ai-brains")
+        .unwrap()
+        .current_dir(dir.path())
+        .arg("--vault-path")
+        .arg(&vault_path)
+        .arg("context")
+        .arg("--new-project")
+        .assert()
+        .success();
+
+    let env2 = std::fs::read_to_string(dir.path().join(".env")).unwrap();
+    let project2 = env2
+        .lines()
+        .find(|l| l.starts_with("AI_BRAINS_PROJECT_ID"))
+        .and_then(|l| l.split('=').nth(1))
+        .map(|s| s.to_string())
+        .expect("second project_id must be in .env");
+
+    assert_ne!(
+        project1, project2,
+        "context --new-project must rotate the project_id; both runs produced {project1}"
+    );
+}
+
 /// T81: `recall --quiet` from a non-git directory must NOT print the
 /// "ChangeGuard bridge query failed, falling back to local FTS5 only:"
 /// warning on stderr. The audit showed this warning is emitted on every
