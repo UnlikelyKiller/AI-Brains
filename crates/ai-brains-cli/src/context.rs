@@ -110,7 +110,7 @@ impl AppContext {
             )
             .build(Payload::ProjectRegistered(ProjectRegisteredPayload {
                 project_id,
-                name: format!("Project {}", project_id),
+                name: format!("(no alias) — {}", &project_id.to_string()[..8]),
                 tx_id: tx_id.clone(),
             }))?;
 
