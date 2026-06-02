@@ -23,6 +23,14 @@ struct Cli {
     /// Hex-encoded key for the vault (or dummy)
     #[arg(long, env = "AI_BRAINS_KEY")]
     key: Option<String>,
+
+    /// Skip auto-discovery of project/session from .env. When set, the CLI
+    /// will not clear inherited `AI_BRAINS_PROJECT_ID` / `AI_BRAINS_SESSION_ID`
+    /// env vars or load a project-local `.env` file. Use this in CI, hooks,
+    /// or any non-interactive flow where the caller has already configured
+    /// the env vars explicitly.
+    #[arg(long, global = true)]
+    no_project_context: bool,
 }
 
 #[derive(Subcommand)]
@@ -326,23 +334,32 @@ pub enum SafetyCommands {
 }
 
 fn main() {
+    // Parse the CLI first so we can read the global --no-project-context
+    // flag before doing any env-var manipulation. We re-parse below; clap
+    // is cheap and this keeps the env-var logic close to its trigger.
+    let no_project_context = std::env::args().any(|a| a == "--no-project-context");
+
     // Project .env always wins over inherited shell vars.
     // If no local .env exists, we clear project-specific env vars to prevent
     // stale inheritance from other projects in the same shell session.
-    if !std::path::Path::new(".env").exists() {
-        std::env::remove_var("AI_BRAINS_PROJECT_ID");
-        std::env::remove_var("AI_BRAINS_SESSION_ID");
-    } else {
-        dotenvy::dotenv_override().ok();
-    }
+    // T80: --no-project-context disables this whole block so that CI, hooks,
+    // and any non-interactive caller can supply env vars explicitly.
+    if !no_project_context {
+        if !std::path::Path::new(".env").exists() {
+            std::env::remove_var("AI_BRAINS_PROJECT_ID");
+            std::env::remove_var("AI_BRAINS_SESSION_ID");
+        } else {
+            dotenvy::dotenv_override().ok();
+        }
 
-    // Fallback to global config in ~/.ai-brains/.env if AI_BRAINS_VAULT_PATH not set yet
-    if std::env::var("AI_BRAINS_VAULT_PATH").is_err() {
-        if let Some(mut home) = dirs::home_dir() {
-            home.push(".ai-brains");
-            home.push(".env");
-            if home.exists() {
-                dotenvy::from_path_override(home).ok();
+        // Fallback to global config in ~/.ai-brains/.env if AI_BRAINS_VAULT_PATH not set yet
+        if std::env::var("AI_BRAINS_VAULT_PATH").is_err() {
+            if let Some(mut home) = dirs::home_dir() {
+                home.push(".ai-brains");
+                home.push(".env");
+                if home.exists() {
+                    dotenvy::from_path_override(home).ok();
+                }
             }
         }
     }
