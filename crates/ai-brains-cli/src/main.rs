@@ -28,7 +28,11 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Initialize a new vault
-    Init,
+    Init {
+        /// Re-initialize even when the vault already contains data
+        #[arg(long)]
+        force: bool,
+    },
     /// Ingest a conversation turn (reads JSON from stdin)
     Ingest,
     /// Recall memories based on a query
@@ -251,6 +255,13 @@ pub enum BackupCommands {
     Restore {
         /// Path to the backup file
         path: PathBuf,
+        /// Skip the interactive confirmation prompt
+        #[arg(long, short)]
+        force: bool,
+        /// Verify the backup's integrity and print the plan, but do not
+        /// overwrite the destination vault
+        #[arg(long)]
+        dry_run: bool,
     },
 }
 
@@ -374,7 +385,7 @@ fn main() {
 async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     let ctx = AppContext::from_cli(cli.vault_path.clone(), cli.key.clone())?;
     match &cli.command {
-        Commands::Init => commands::init::run(&ctx),
+        Commands::Init { force } => commands::init::run(&ctx, *force),
         Commands::Ingest => commands::ingest::run(&ctx),
         Commands::Recall {
             query,
@@ -427,9 +438,11 @@ async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             commands::nightly::run(&ctx, *schedule, *unschedule, start_time.clone(), *status).await
         }
         Commands::Backup { command } => match command {
-            Some(BackupCommands::Restore { path }) => {
-                commands::backup::run_restore(&ctx, path.clone())
-            }
+            Some(BackupCommands::Restore {
+                path,
+                force,
+                dry_run,
+            }) => commands::backup::run_restore(&ctx, path.clone(), *force, *dry_run),
             Some(BackupCommands::Create { output_dir }) => {
                 commands::backup::run_create(&ctx, output_dir.clone())
             }

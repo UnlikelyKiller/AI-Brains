@@ -43,3 +43,32 @@ Pass `--check-only` to verify tool presence without running the full gate:
 1. Run `cargo install <tool> --locked` with the new version.
 2. Verify the full gate still passes: `.\scripts\dev-check.ps1`
 3. Update the version pin table above and in `scripts/dev-check.ps1` (`$Required` hash).
+
+## Behavior Notes
+
+### `cargo audit` exits 0 with no final summary on a clean run
+
+`cargo-audit` 0.22.x changed its CLI output — a clean run now exits 0 but
+emits **no final summary line**. The visible output ends with
+`Scanning Cargo.lock for vulnerabilities (N crate dependencies)`. To a casual
+reader, that looks like a hang that exited 0.
+
+How to interpret:
+
+- Exit 0 + tail `Scanning …` → success, no vulnerabilities found.
+- Exit 0 + any text after `Scanning …` (a `warning` or `error:` block) →
+  success with informational warnings.
+- Exit non-zero → real failure; the message before exit code is the cause.
+
+To get an explicit confirmation in scripts or CI logs, use the JSON output:
+
+```powershell
+cargo audit --json
+# => {"database":{...},"lockfile":{"dependency-count":N},"vulnerabilities":{"found":false,"count":0,"list":[]},"warnings":{}}
+```
+
+The JSON envelope's `vulnerabilities.count` is the authoritative answer.
+
+This quirk is what made the early T71 verification confusing. The
+`scripts\dev-check.ps1` script treats exit 0 as success, which is correct —
+just be aware that the human-readable form gives no positive confirmation.

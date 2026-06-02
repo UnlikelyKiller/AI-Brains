@@ -14,6 +14,7 @@ Use ChangeGuard as the local safety layer and engineering intelligence engine fo
 - **Route Extraction**: Detects HTTP routes from Axum, Express, and other frameworks. Stores `method`, `path_pattern`, `handler_name`, `framework`, and confidence score.
 - **Call Graph**: Tracks function call relationships (`Direct`, `MethodCall`, `TraitDispatch`, `Dynamic`, `External`) so you can answer "what calls this function?" and "what does this function depend on?".
 - **Knowledge Graph**: Durable, billion-edge relational and vector storage (CozoDB-redux/Sled) with native code-aware tokenization (Tree-Sitter). Stores symbols in `project_symbol` table.
+- **AI-Brains Bridge**: Exposes its Knowledge Graph to AI-Brains via `bridge export --graph-query` IPC. AI-Brains nightly pipeline queries symbol data through this bridge (T70).
 - **Impact Analysis**: Deep "blast radius" analysis across 20+ specialized providers (Infra, Contracts, Observability, Temporal).
 - **Cryptographic Provenance**: Mathematical proof of intent via Ed25519 signing of every ledger entry. Offline verification via `verify --signatures`.
 - **Intent Capture TUI**: Interactive terminal UI for auditing and refining LLM-drafted intent payloads during the git commit process.
@@ -22,11 +23,51 @@ Use ChangeGuard as the local safety layer and engineering intelligence engine fo
 - **Documentation Generation**: Export Knowledge Graph data to Markdown/Mermaid passive documentation (`index --export-docs`).
 - **Dead Code Detection**: Confidence-based dead code detection blending graph reachability, git activity, and test history (`dead-code` command).
 - **Live Visualization**: WebSocket-based Arc Diagram for real-time Knowledge Graph updates (`viz-server`, `viz-server --stop`).
-- **AI-Brains Bridge**: Exposes its Knowledge Graph to AI-Brains via `bridge export --graph-query` IPC. AI-Brains nightly pipeline queries symbol data through this bridge (T70).
 
 ## Philosophy: CLI-First Intelligence
 
 ChangeGuard is a **CLI-first** tool and **explicitly rejects MCP/Server/Cloud architecture** for v1. It provides structured, "Gemini-ready" context directly via its CLI outputs. Use ChangeGuard commands as your primary discovery and safety tools.
+
+## Default Workflow
+
+1. Check availability when uncertain:
+
+   ```bash
+   changeguard doctor
+   ```
+
+2. Check current provenance state:
+
+   ```bash
+   changeguard ledger status
+   ```
+
+3. Before meaningful code edits, assess impact:
+
+   ```bash
+   changeguard scan --impact
+   ```
+
+4. Read `.changeguard/reports/latest-impact.json` when it exists. Use it to
+   identify risk level, hotspots, temporal couplings, affected symbols, runtime
+   dependencies, and verification hints.
+
+5. Make the smallest scoped change that satisfies the task.
+
+6. After edits, run:
+
+   ```bash
+   changeguard verify
+   ```
+
+   Also run any repo-specific tests needed for the touched files.
+
+7. For final gates, avoid overlapping `cargo`, `nextest`, or `changeguard
+   verify` jobs. Parallel read-only inspection is fine, but final verification
+   should run sequentially to avoid Windows file-lock and linker contention.
+
+8. Report the outcome: impact/risk signals used, verification run, and any
+   unresolved pending transactions, drift, or unavailable ChangeGuard command.
 
 ## Code Symbol Queries — Use These First
 
@@ -62,48 +103,28 @@ These queries work because ChangeGuard indexes:
 - Function call edges via static analysis
 - SCIP-precise symbol navigation from LSP data
 
-## Default Workflow
+Symbols ingested by the bridge become AI-Brains memories (T70) and are returned
+by `ai-brains recall "<topic>"` alongside session memories. To verify the
+bridge is alive end-to-end, run `ai-brains safety sync --dry-run` and confirm
+hotspots are listed.
 
-1. Check availability when uncertain:
+## Audit Smoke Tests
 
-   ```bash
-   changeguard doctor
-   ```
+When reviewing CLI/config behavior, supplement unit tests with command-level
+smoke tests against the current build output, usually `target\debug\changeguard.exe`
+on Windows. Prefer focused temporary repositories and verify failure cases as
+well as success cases.
 
-2. **Refresh symbol index** (do this at session start when working on code):
+Useful checks include:
 
-   ```bash
-   changeguard index --auto-index
-   ```
-
-3. Check current provenance state:
-
-   ```bash
-   changeguard ledger status
-   ```
-
-4. Before meaningful code edits, assess impact:
-
-   ```bash
-   changeguard scan --impact
-   ```
-
-5. Read `.changeguard/reports/latest-impact.json` when it exists. Use it to
-   identify risk level, hotspots, temporal couplings, affected symbols, runtime
-   dependencies, and verification hints.
-
-6. Make the smallest scoped change that satisfies the task.
-
-7. After edits, run:
-
-   ```bash
-   changeguard verify
-   ```
-
-   Also run any repo-specific tests needed for the touched files.
-
-8. Report the outcome: impact/risk signals used, verification run, and any
-   unresolved pending transactions, drift, or unavailable ChangeGuard command.
+- JSON mode remains parseable on failure paths (`config verify --json`, invalid
+  `config.toml`, invalid `rules.toml`, unknown `--section`).
+- Dry-run commands do not create persistent state or perform external probes
+  unless that is explicitly part of the dry-run contract.
+- Requested vs effective config values are visible when runtime clamping or
+  defaults change the final behavior.
+- Internal callsites that construct CLI argument structs still populate new
+  fields explicitly.
 
 ## Repository Configuration
 
@@ -188,6 +209,39 @@ changeguard verify --signatures
 ```
 This performs an offline mathematical validation of every record against its signature and public key.
 
+## Publish Hygiene
+
+When asked to push, catch up `main`, or prune branches:
+
+1. Fetch current remote state first:
+
+   ```powershell
+   git fetch --all --prune
+   git rev-list --left-right --count origin/main...HEAD
+   ```
+
+2. If `origin/main` moved, reconcile before staging or pushing. Do not rebase or
+   reset over user work without explicit direction.
+
+3. Stage only the intended scope, commit, then push:
+
+   ```powershell
+   git push origin main
+   ```
+
+   The pre-push hook may run `changeguard verify`; treat that as the authoritative
+   publish gate and report its result.
+
+4. Prune conservatively:
+
+   ```powershell
+   git remote prune origin --dry-run
+   git branch --merged main
+   ```
+
+   Delete local branches only when they are listed as merged into `main` and are
+   not the active branch. Branch pruning can legitimately be a no-op.
+
 ## Reasoning Rules
 
 - If temporal coupling is above 70% for an unchanged file, inspect that file.
@@ -221,20 +275,21 @@ Alternatively, run manually from the source root:
 cargo install --path .
 ```
 
-## AI-Brains Integration
+Treat the install step as part of done criteria after ChangeGuard source edits,
+before publishing or handing the work back.
 
-ChangeGuard and AI-Brains are complementary systems sharing a CozoDB backend:
+## Cross-Model Review Notes
 
-| Capability | Use |
-|------------|-----|
-| "What does function X do?" | `changeguard search "X"` |
-| "What endpoints exist?" | `changeguard ask "list all HTTP routes"` |
-| "What calls function X?" | `changeguard ask "what calls X"` |
-| "What did we decide about X?" | `ai-brains recall "X" --semantic` |
-| "What was built in session Y?" | `ai-brains graph hierarchy <memory_id>` |
-| "Blast radius of this change?" | `changeguard scan --impact` |
+For high-risk diffs, a read-only `codex exec` review can be useful before final
+verification. In non-interactive Windows/PowerShell runs, redirect stdin from
+`NUL` so the process does not wait for input:
 
-The AI-Brains nightly pipeline (T70, pending) will automatically pull ChangeGuard's `project_symbol` data into AI-Brains memories, so `ai-brains recall` will also return code symbols. Until T70 ships, use `changeguard search` and `changeguard ask` directly for code-symbol queries.
+```powershell
+cmd /c "codex exec -C ""C:\dev\ChangeGuard"" -s read-only -m gpt-5.4 -o output\review.md ""Review the current diff for regressions. Do not modify files."" < NUL"
+```
+
+If the command appears stuck, inspect the output file before waiting longer; the
+review may already have written useful findings.
 
 ## References
 

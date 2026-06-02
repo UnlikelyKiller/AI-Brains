@@ -13,6 +13,11 @@
 | T69 | Live Graph Hook — Incremental Graph Updates | ✅ **Complete** | Claude+Codex | [T69](tracks/trackT69-live-graph-hook/spec.md) | Apply graph projector incrementally on each event append; eliminates need for manual `graph rebuild` after recall/nightly |
 | T70 | ChangeGuard Symbol Bridge — Code-Aware Recall | ✅ **Complete** | Codex | [T70](tracks/trackT70-changeguard-symbol-bridge/spec.md) | Ingest ChangeGuard's code symbols (functions and routes) into AI-Brains during nightly so `recall` returns actual code structure |
 | T71 | CI Tooling Reproducibility | ✅ **Complete** | Claude | [T71](tracks/trackT71-ci-tooling-reproducibility/spec.md) | All three tools install via cargo install --locked; full gate passes locally; scripts/dev-check.ps1 verifies presence + runs gate |
+| T72 | Status & Doc Reconciliation | ✅ **Complete** | Claude | [T72](tracks/trackT72-status-reconciliation/spec.md) | Rewrote Docs/status.md to T71 reality; restored bridge docs to .agents skill; archived stale root artifacts; documented cargo audit quirk in ci-tooling.md |
+| T73 | Idempotent `init` | ✅ **Complete** | Claude | [T73](tracks/trackT73-init-safety/spec.md) | `init` refuses on populated vault unless `--force`; structured JSON error envelope on refusal; 2 new tests |
+| T74 | Graph Health Smoke Test | ✅ **Complete** | Claude | [T74](tracks/trackT74-graph-health-smoke/spec.md) | nextest smoke that runs init → ingest → pin → recall → `graph update` and asserts nodes/edges ≥ 1, status live |
+| T75 | OPERATIONS.md Modernization | ✅ **Complete** | Claude | [T75](tracks/trackT75-operations-modernization/spec.md) | Rewrote OPERATIONS.md to cover daemon, forget, safety sync, sync query, bridge, schedule, restore, and the full env-var surface |
+| T76 | CLI Polish (project list + backup restore) | ✅ **Complete** | Claude | [T76](tracks/trackT76-cli-polish/spec.md) | Widened `project list` name column with hint header; added `--force` and `--dry-run` to `backup restore`; 2 new tests |
 
 ---
 

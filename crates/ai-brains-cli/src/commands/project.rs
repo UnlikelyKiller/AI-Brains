@@ -4,14 +4,14 @@ use ai_brains_store::QueryStore;
 pub fn list(ctx: &AppContext) -> Result<(), Box<dyn std::error::Error>> {
     let projects = ctx.conn.list_projects()?;
     println!(
-        "{:<36} {:<20} {:<25} memories",
-        "project_id", "name", "alias"
+        "{:<36} {:<30} {:<25} memories",
+        "project_id", "name (alias|UUID)", "alias"
     );
     for (pid, name, alias, count) in projects {
         println!(
-            "{:<36} {:<20} {:<25} {}",
+            "{:<36} {:<30} {:<25} {}",
             pid,
-            &name[..std::cmp::min(20, name.len())],
+            &name[..std::cmp::min(30, name.len())],
             alias,
             count
         );
