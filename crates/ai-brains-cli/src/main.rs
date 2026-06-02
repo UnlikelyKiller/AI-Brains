@@ -93,6 +93,11 @@ enum Commands {
         /// Show read-only status of the last nightly run and pending work
         #[arg(long, conflicts_with = "schedule", conflicts_with = "unschedule")]
         status: bool,
+        /// Skip the Antigravity session import. Use this on isolated, CI,
+        /// or per-project vaults to prevent cross-vault contamination
+        /// from the user's real Antigravity history.
+        #[arg(long)]
+        skip_import: bool,
     },
     /// Create a timestamped backup of the vault
     Backup {
@@ -434,9 +439,16 @@ async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             unschedule,
             start_time,
             status,
-        } => {
-            commands::nightly::run(&ctx, *schedule, *unschedule, start_time.clone(), *status).await
-        }
+            skip_import,
+        } => commands::nightly::run(
+            &ctx,
+            *schedule,
+            *unschedule,
+            start_time.clone(),
+            *status,
+            *skip_import,
+        )
+        .await,
         Commands::Backup { command } => match command {
             Some(BackupCommands::Restore {
                 path,

@@ -10,6 +10,7 @@ pub async fn run(
     unschedule: bool,
     start_time: String,
     status: bool,
+    skip_import: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let task_name = "AI-Brains-Nightly";
 
@@ -148,7 +149,13 @@ pub async fn run(
     ));
 
     // Import Antigravity sessions before summarization so they get summarized too
-    if let Err(e) = crate::commands::antigravity_import::run(ctx, 30) {
+    if skip_import {
+        eprintln!(
+            "Skipping Antigravity import (--skip-import). \
+             Use this on isolated, CI, or per-project vaults to prevent \
+             cross-vault contamination from the user's real Antigravity history."
+        );
+    } else if let Err(e) = crate::commands::antigravity_import::run(ctx, 30) {
         tracing::error!("Antigravity import failed: {}", e);
     }
 
