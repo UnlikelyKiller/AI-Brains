@@ -488,6 +488,75 @@ fn test_backup_restore_force_skips_prompt() {
         .stdout(predicate::str::contains("Vault restored from"));
 }
 
+/// T81: `recall --quiet` from a non-git directory must NOT print the
+/// "ChangeGuard bridge query failed, falling back to local FTS5 only:"
+/// warning on stderr. The audit showed this warning is emitted on every
+/// `recall` call when the cwd is not a git repository.
+#[test]
+fn test_recall_quiet_silences_bridge_warning() {
+    let dir = tempdir().unwrap();
+    let vault_path = dir.path().join("vault.db");
+
+    // Run from a directory that is guaranteed to NOT be a git repository.
+    assert!(!dir.path().join(".git").exists());
+
+    Command::cargo_bin("ai-brains")
+        .unwrap()
+        .arg("--vault-path")
+        .arg(&vault_path)
+        .arg("init")
+        .assert()
+        .success();
+
+    // The vault must have at least one memory for recall to hit FTS5.
+    let turn_json = r#"{
+        "session_id": "11111111-1111-1111-1111-111111111111",
+        "project_id": "22222222-2222-2222-2222-222222222222",
+        "harness_id": "33333333-3333-3333-3333-333333333333",
+        "turn_id": "44444444-4444-4444-4444-444444444444",
+        "privacy": "LocalOnly",
+        "role": "user",
+        "content": "T81 quiet-recall-bridge-warning seed content."
+    }"#;
+    Command::cargo_bin("ai-brains")
+        .unwrap()
+        .arg("--vault-path")
+        .arg(&vault_path)
+        .arg("ingest")
+        .write_stdin(turn_json)
+        .assert()
+        .success();
+
+    let output = Command::cargo_bin("ai-brains")
+        .unwrap()
+        .current_dir(dir.path())
+        .arg("--vault-path")
+        .arg(&vault_path)
+        .arg("recall")
+        .arg("--quiet")
+        .arg("quiet bridge warning")
+        .output()
+        .expect("recall must run");
+
+    // The CLI must accept --quiet and succeed; if clap rejected the flag,
+    // the bridge call would not have run, silently passing this test.
+    assert!(
+        output.status.success(),
+        "recall --quiet must exit 0; got: stderr={}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        !stderr.contains("bridge query failed"),
+        "recall --quiet must not print bridge-failed warning; got: {stderr}"
+    );
+    assert!(
+        !stderr.contains("falling back"),
+        "recall --quiet must not print falling-back message; got: {stderr}"
+    );
+}
+
 /// T80: when no `.env` exists in cwd, `main()` clears
 /// `AI_BRAINS_PROJECT_ID` and `AI_BRAINS_SESSION_ID` even if the caller
 /// has set them in their shell. The `--no-project-context` escape hatch
