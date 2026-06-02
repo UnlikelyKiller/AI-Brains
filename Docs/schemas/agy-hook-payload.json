@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-brains.dev/schemas/agy-hook-payload.json",
+  "title": "AI-Brains agy-hook payload",
+  "description": "JSON payload passed to `ai-bbrains agy-hook --payload`. Encodes a single Antigravity session that the hook should ingest.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["transcriptPath", "sessionId", "projectHash"],
+  "properties": {
+    "transcriptPath": {
+      "type": "string",
+      "description": "Absolute path to the Antigravity transcript (.jsonl). Normalized via ai-brains-path on Windows.",
+      "examples": ["C:\\Users\\<user>\\AppData\\Local\\Temp\\agy-transcripts\\abc.jsonl"]
+    },
+    "sessionId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Antigravity session UUID. Used to drive delta-sync against the vault."
+    },
+    "projectHash": {
+      "type": "string",
+      "description": "Antigravity projectHash (typically a short hex string). Auto-linked to the project on first ingest."
+    }
+  },
+  "examples": [
+    {
+      "transcriptPath": "C:\\Users\\<user>\\AppData\\Local\\Temp\\agy-transcripts\\abc.jsonl",
+      "sessionId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      "projectHash": "deadbeef"
+    }
+  ]
+}

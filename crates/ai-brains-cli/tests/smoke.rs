@@ -545,11 +545,13 @@ fn test_sync_pull_schema_flag() {
         parsed["title"].as_str(),
         Some("AI-Brains sync pull NDJSON record")
     );
-    assert!(parsed["required"]
-        .as_array()
-        .map(|a| a.iter().any(|v| v.as_str() == Some("bridge_version")))
-        .unwrap_or(false),
-        "sync pull schema must require bridge_version");
+    assert!(
+        parsed["required"]
+            .as_array()
+            .map(|a| a.iter().any(|v| v.as_str() == Some("bridge_version")))
+            .unwrap_or(false),
+        "sync pull schema must require bridge_version"
+    );
 }
 
 /// T82: `context --new-project` with an existing `.env` must rotate the
@@ -710,8 +712,14 @@ fn test_no_project_context_preserves_env_vars() {
     let output = Command::cargo_bin("ai-brains")
         .unwrap()
         .current_dir(dir.path())
-        .env("AI_BRAINS_PROJECT_ID", "22222222-2222-2222-2222-222222222222")
-        .env("AI_BRAINS_SESSION_ID", "11111111-1111-1111-1111-111111111111")
+        .env(
+            "AI_BRAINS_PROJECT_ID",
+            "22222222-2222-2222-2222-222222222222",
+        )
+        .env(
+            "AI_BRAINS_SESSION_ID",
+            "11111111-1111-1111-1111-111111111111",
+        )
         .arg("--vault-path")
         .arg(&vault_path)
         .arg("--no-project-context")

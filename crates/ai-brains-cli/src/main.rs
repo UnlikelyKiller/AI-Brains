@@ -3,6 +3,26 @@ mod context;
 mod daemon_client;
 mod live_graph;
 
+/// JSON Schema for `ai-bbrains agy-hook --payload`. Bundled at compile time
+/// so `--schema` works regardless of cwd. The source-of-truth file lives at
+/// `Docs/schemas/agy-hook-payload.json`; changes there must be mirrored here.
+const SCHEMA_AGY_HOOK: &str = include_str!("../../../Docs/schemas/agy-hook-payload.json");
+
+/// JSON Schema for the NDJSON records consumed by `ai-bbrains sync pull --from-file`.
+/// Source-of-truth at `Docs/schemas/sync-pull-record.json`.
+const SCHEMA_SYNC_PULL: &str = include_str!("../../../Docs/schemas/sync-pull-record.json");
+
+/// Print an embedded JSON Schema to stdout and exit 0. The schemas are
+/// included at compile time so the binary is self-contained.
+fn print_schema(schema: &str, _title: &str) -> Result<(), Box<dyn std::error::Error>> {
+    // Pretty-print so users can read it directly. The audit required that
+    // the output be valid JSON (consumers can pipe to jq).
+    let parsed: serde_json::Value = serde_json::from_str(schema)
+        .map_err(|e| format!("Embedded schema is not valid JSON: {}", e))?;
+    println!("{}", serde_json::to_string_pretty(&parsed)?);
+    Ok(())
+}
+
 use crate::context::AppContext;
 use ai_brains_core::ids::{ProjectId, SessionId};
 use clap::{Parser, Subcommand};
@@ -195,7 +215,11 @@ enum Commands {
     AgyHook {
         /// The JSON payload from agy
         #[arg(long)]
-        payload: String,
+        payload: Option<String>,
+        /// Print the JSON Schema for the expected `--payload` shape and exit.
+        /// The schema is also at `Docs/schemas/agy-hook-payload.json`.
+        #[arg(long)]
+        schema: bool,
     },
     /// Manage the AI-Brains daemon process
     Daemon {
@@ -299,6 +323,10 @@ pub enum SyncCommands {
         /// Suppress ChangeGuard error messages
         #[arg(long, short)]
         quiet: bool,
+        /// Print the JSON Schema for the expected NDJSON record shape and exit.
+        /// The schema is also at `Docs/schemas/sync-pull-record.json`.
+        #[arg(long)]
+        schema: bool,
     },
     /// Push current context to ChangeGuard
     Push {
@@ -464,15 +492,17 @@ async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             start_time,
             status,
             skip_import,
-        } => commands::nightly::run(
-            &ctx,
-            *schedule,
-            *unschedule,
-            start_time.clone(),
-            *status,
-            *skip_import,
-        )
-        .await,
+        } => {
+            commands::nightly::run(
+                &ctx,
+                *schedule,
+                *unschedule,
+                start_time.clone(),
+                *status,
+                *skip_import,
+            )
+            .await
+        }
         Commands::Backup { command } => match command {
             Some(BackupCommands::Restore {
                 path,
@@ -547,7 +577,14 @@ async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 hotspots,
                 ledger,
                 quiet,
-            } => commands::sync::run_pull(&ctx, from_file.clone(), *hotspots, *ledger, *quiet),
+                schema,
+            } => {
+                if *schema {
+                    print_schema(SCHEMA_SYNC_PULL, "AI-Brains sync pull NDJSON record")
+                } else {
+                    commands::sync::run_pull(&ctx, from_file.clone(), *hotspots, *ledger, *quiet)
+                }
+            }
             SyncCommands::Push {
                 with_impact,
                 with_verify,
@@ -560,7 +597,18 @@ async fn run(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             } => commands::sync::run_query(&ctx, query.clone(), format.clone(), *quiet).await,
         },
         Commands::AntigravityImport { days } => commands::antigravity_import::run(&ctx, *days),
-        Commands::AgyHook { payload } => commands::agy_hook::run(&ctx, payload),
+        Commands::AgyHook { payload, schema } => {
+            if *schema {
+                print_schema(SCHEMA_AGY_HOOK, "AI-Brains agy-hook payload")
+            } else if let Some(p) = payload {
+                commands::agy_hook::run(&ctx, p)
+            } else {
+                Err(
+                    "Either provide --payload <json> or use --schema to print the payload schema."
+                        .into(),
+                )
+            }
+        }
         Commands::Daemon { command } => match command {
             DaemonCommands::Start => commands::daemon::run_start(&ctx),
             DaemonCommands::Status => commands::daemon::run_status(&ctx).await,

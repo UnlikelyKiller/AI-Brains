@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-brains.dev/schemas/sync-pull-record.json",
+  "title": "AI-Brains sync pull NDJSON record",
+  "description": "One line of NDJSON consumed by `ai-bbrains sync pull --from-file <path>`. Each line is a BridgeRecord; only the `madr`, `decision`, `insight`, and `bm25_match` record_kinds are ingested.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["bridge_version", "direction", "timestamp", "project_id", "record_kind", "payload", "privacy"],
+  "properties": {
+    "bridge_version": {
+      "type": "string",
+      "description": "Bridge protocol version. Must be present; e.g. '0.3'.",
+      "examples": ["0.3"]
+    },
+    "direction": {
+      "type": "string",
+      "enum": ["inbound", "outbound"],
+      "description": "Direction of the record. `inbound` = ChangeGuard -> AI-Brains."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "RFC 3339 timestamp."
+    },
+    "parent_hash": {
+      "type": ["string", "null"],
+      "description": "Optional hash linking this record to a previous one in a chain."
+    },
+    "project_id": {
+      "type": "string",
+      "description": "Project UUID (or alias) the record belongs to."
+    },
+    "session_id": {
+      "type": ["string", "null"],
+      "description": "Optional session UUID."
+    },
+    "tx_id": {
+      "type": ["string", "null"],
+      "description": "Optional ChangeGuard transaction ID."
+    },
+    "record_kind": {
+      "type": "string",
+      "description": "Kind of record. AI-Brains ingests `madr`, `decision`, `insight`, and `bm25_match`.",
+      "examples": ["madr", "decision", "insight", "bm25_match", "hotspot", "ledger_delta"]
+    },
+    "payload": {
+      "type": "object",
+      "description": "Record payload. Shape depends on `record_kind`. See examples below.",
+      "oneOf": [
+        {
+          "description": "MADR / decision record",
+          "properties": {
+            "type": { "const": "madr" },
+            "title": { "type": "string" },
+            "context": { "type": "string" },
+            "decision": { "type": "string" },
+            "consequences": { "type": "string" }
+          }
+        },
+        {
+          "description": "Insight / bm25_match record",
+          "properties": {
+            "type": { "enum": ["insight", "bm25_match"] },
+            "memory_id": { "type": "string" },
+            "content": { "type": "string" },
+            "relevance": { "type": "number" }
+          }
+        }
+      ]
+    },
+    "privacy": {
+      "type": "string",
+      "enum": ["LocalOnly", "CloudOk", "NeverInject", "Sealed"],
+      "description": "Privacy level. Combines with other records via Privacy::combine."
+    }
+  },
+  "examples": [
+    {
+      "bridge_version": "0.3",
+      "direction": "inbound",
+      "timestamp": "2026-06-02T10:00:00Z",
+      "parent_hash": null,
+      "project_id": "22222222-2222-2222-2222-222222222222",
+      "session_id": "11111111-1111-1111-1111-111111111111",
+      "tx_id": null,
+      "record_kind": "madr",
+      "payload": {
+        "type": "madr",
+        "title": "ADR-001: Use SQLite",
+        "context": "We needed an embedded database.",
+        "decision": "We chose SQLite with SQLCipher.",
+        "consequences": "Simpler deployment, encrypted at rest."
+      },
+      "privacy": "LocalOnly"
+    }
+  ]
+}
