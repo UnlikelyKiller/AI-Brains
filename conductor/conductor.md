@@ -37,6 +37,7 @@
 | T93 | `project detect` Fallback to `.env` Project ID | ✅ **Complete** | Claude | [T93](tracks/trackT93-project-detect-env-fallback/spec.md) | Falls back to `AI_BRAINS_PROJECT_ID` env var with `(from .env)` indicator; exits 1 with clear message when neither slug nor env matches |
 | UX | Friendly default project name | ✅ **Complete** | Claude | [UX](tracks/trackUX-friendly-default-project-name/spec.md) | Default name is `(no alias) — <8-char-uuid-prefix>` instead of `Project <full-uuid>`; full id still in dedicated column |
 | Docs | WORKFLOWS.md cookbook | ✅ **Complete** | Claude | [Docs/WORKFLOWS.md](../Docs/WORKFLOWS.md) | 6 end-to-end recipes: setup, Antigravity import, hygiene, backup, code-search, daemon/nightly |
+| T94 | Connection Handshake Retries & Jitter | ⏳ **Pending** | Claude | [T94](tracks/trackT94-connection-handshake-retries/spec.md) | Implement backoff retry patterns in the TCP status checks for backend providers to prevent false-negatives on slow startup |
 
 
 ---

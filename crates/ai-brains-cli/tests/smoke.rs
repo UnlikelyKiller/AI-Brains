@@ -869,6 +869,44 @@ fn test_daemon_status_respects_embedding_url_env_var() {
     );
 }
 
+/// T94: `daemon status` retries connection handshakes to handle slow startup of backends.
+#[test]
+fn test_daemon_status_retries_on_slow_startup() {
+    use std::net::TcpListener;
+    use std::thread;
+    use std::time::Duration;
+
+    // Bind to a random port to get a free port number, then drop it
+    let port = {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        listener.local_addr().unwrap().port()
+    };
+
+    // Spawn a thread that will bind the listener only after a delay (e.g. 250ms)
+    let _handle = thread::spawn(move || {
+        thread::sleep(Duration::from_millis(250));
+        let listener = TcpListener::bind(format!("127.0.0.1:{}", port)).unwrap();
+        if let Ok((_socket, _)) = listener.accept() {
+            // connection established
+        }
+    });
+
+    let output = Command::cargo_bin("ai-brains")
+        .unwrap()
+        .env("AI_BRAINS_MODEL_URL", format!("http://127.0.0.1:{}", port))
+        .arg("daemon")
+        .arg("status")
+        .output()
+        .expect("daemon status must run");
+
+    assert!(output.status.success());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("Open"),
+        "daemon status must retry and find the delayed port Open; got: {stdout}"
+    );
+}
+
 /// T86: `recall -` must read the query from stdin and return a valid JSON response.
 #[test]
 fn test_recall_reads_query_from_stdin() {
