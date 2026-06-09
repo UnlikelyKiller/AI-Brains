@@ -60,7 +60,7 @@ ai-brains recall "query" --project-id <id>
 ### 2. ChangeGuard Search (live code symbols, functions, routes, call graph)
 ```bash
 # Refresh the symbol index first (always do this before code queries)
-changeguard index --auto-index
+changeguard index --incremental
 
 # Find functions, structs, routes by name
 changeguard search "handleGetUser"
@@ -138,7 +138,7 @@ cargo fmt --check ; cargo clippy --workspace --all-targets -- -D warnings ; carg
 ## Quick Start
 
 1. **Activate and read the `changeguard` skill** — it handles impact analysis, symbol search, and provenance.
-2. **Run `changeguard index --auto-index`** to refresh the live code symbol index.
+2. **Run `changeguard index --incremental`** to refresh the live code symbol index.
 3. **Run `ai-brains recall "what is this project"` `--semantic`** to surface existing knowledge.
 4. **Read `conductor/conductor.md`** to see the current track state (T61–T71, all complete).
 5. **Run `changeguard ledger status`** to check recent architectural provenance.

@@ -1,5 +1,5 @@
 ---
-title: AI-Brains Project Skill
+name: AI-Brains Project Skill
 description: How to build, develop, and operate the AI-Brains local-first memory vault.
 category: devops
 version: 2.1.0
