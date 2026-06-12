@@ -26,4 +26,13 @@
 - **CI Gate**: Before every commit, the workspace MUST pass:
   `cargo fmt --check ; cargo clippy --workspace --all-targets -- -D warnings ; cargo nextest run --workspace ; cargo deny check ; cargo audit`
 - **Track Discipline**: Implementation MUST follow the `conductor/conductor.md` track-by-track.
-- **Change Management**: Run `changeguard scan --impact` before edits and `changeguard verify` before commits.
+- **Change Management**:
+  - **Before Edits**: Run `changeguard doctor` to ensure the toolchain is healthy, and `changeguard scan --impact` for meaningful code/config/policy edits. Inspect any hotspots and high (>70%) temporal coupling.
+  - **During Edits**: DO NOT edit `.changeguard/` state files directly.
+  - **After Edits**: Run `changeguard verify` to validate changes against safety rules. Report verification outcomes, pending transactions, risk levels, and drift.
+  - **Ledger Provenance**: Record architectural updates via `changeguard ledger start` / `commit` or `atomic` commands.
+- **AI-Brains Self-Usage**:
+  - **Preflight Briefing**: Run `ai-brains preflight --summary` at session start to check active sessions and constraints.
+  - **Decision Recall**: Run `ai-brains recall "<query>" --semantic` to search past architectural decisions.
+  - **Decisions Pinning**: Run `ai-brains pin "<DECISION/CONSTRAINT: message>"` to persist new decisions or project constraints.
+

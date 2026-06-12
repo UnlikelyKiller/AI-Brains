@@ -166,7 +166,8 @@ impl DaemonWriter {
                 semantic: false,
                 graph_boost: 0.0,
                 graph_hop_depth: 0,
-                ..Default::default()
+                no_bridge: true,
+                quiet: true,
             },
         )?;
         Ok(hits)
